@@ -14,13 +14,23 @@ const css = `
     --ink3:    #888888;
     --accent:  #b50063;
   }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+  .app.dark {
+    --bg:      #0f0f0f;
+    --bg2:     #1a1a1a;
+    --bg3:     #242424;
+    --border:  #2e2e2e;
+    --ink:     #f0f0f0;
+    --ink2:    #b0b0b0;
+    --ink3:    #666666;
+    --accent:  #e0498a;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; transition: background 0.25s ease, background-color 0.25s ease, border-color 0.25s ease, color 0.25s ease; }
   .app {
-    max-width: 390px; margin: 0 auto; min-height: 100vh;
+    width: 390px; max-width: 100%; margin: 0 auto; min-height: 100vh;
     background: var(--bg); color: var(--ink);
     font-family: 'Instrument Sans', sans-serif;
   }
-  .screen { padding-bottom: 80px; min-height: 100vh; }
+  .screen { padding-bottom: 80px; min-height: 100vh; width: 100%; }
 
   /* NAV */
   .bottom-nav {
@@ -40,7 +50,7 @@ const css = `
   /* FEED HEADER */
   .feed-header {
     position: sticky; top: 0; z-index: 50;
-    background: rgba(240,240,240,0.94);
+    background: color-mix(in srgb, var(--bg) 94%, transparent);
     backdrop-filter: blur(10px);
     border-bottom: 1px solid var(--border);
     padding: 52px 18px 0;
@@ -296,7 +306,7 @@ const css = `
   /* ── SHOWS SCREEN ── */
   .shows-header {
     position: sticky; top: 0; z-index: 50;
-    background: rgba(240,240,240,0.94); backdrop-filter: blur(10px);
+    background: color-mix(in srgb, var(--bg) 94%, transparent); backdrop-filter: blur(10px);
     border-bottom: 1px solid var(--border);
     padding: 52px 18px 14px;
     display: flex; justify-content: space-between; align-items: flex-end;
@@ -433,6 +443,56 @@ const css = `
     color: var(--ink3); font-size: 12px; cursor: pointer;
     padding: 14px; font-family: 'Instrument Sans', sans-serif;
   }
+
+  /* ── SETTINGS SCREEN ── */
+  .settings-header {
+    position: sticky; top: 0; z-index: 50; width: 100%;
+    background: color-mix(in srgb, var(--bg) 94%, transparent);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--border);
+    padding: 52px 18px 14px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .settings-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 28px; font-weight: 300; font-style: italic; flex: 1;
+  }
+  .settings-section-label {
+    font-size: 9px; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase;
+    color: var(--ink3); padding: 22px 22px 8px; width: 100%;
+  }
+  .settings-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 22px; border-bottom: 1px solid var(--border);
+    background: var(--bg); width: 100%;
+  }
+  .settings-row-left { display: flex; flex-direction: column; gap: 3px; }
+  .settings-row-label { font-size: 14px; font-weight: 600; color: var(--ink); }
+  .settings-row-sub { font-size: 11px; color: var(--ink3); }
+
+  /* Toggle switch */
+  .toggle-wrap { position: relative; width: 48px; height: 28px; flex-shrink: 0; }
+  .toggle-wrap input { opacity: 0; width: 0; height: 0; position: absolute; }
+  .toggle-track {
+    position: absolute; inset: 0; border-radius: 14px;
+    background: var(--bg3); border: 1.5px solid var(--border);
+    cursor: pointer; transition: background 0.22s, border-color 0.22s;
+  }
+  .toggle-wrap input:checked + .toggle-track {
+    background: var(--ink); border-color: var(--ink);
+  }
+  .toggle-track::after {
+    content: ''; position: absolute;
+    top: 3px; left: 3px;
+    width: 18px; height: 18px; border-radius: 50%;
+    background: var(--bg3); border: 1px solid var(--border);
+    transition: transform 0.22s cubic-bezier(0.34,1.56,0.64,1), background 0.22s, border-color 0.22s;
+  }
+  .toggle-wrap input:checked + .toggle-track::after {
+    transform: translateX(20px);
+    background: var(--bg); border-color: var(--bg2);
+  }
+  .settings-icon-label { font-size: 18px; margin-bottom: 1px; }
 `;
 
 const slotSongs = [
@@ -529,6 +589,7 @@ export default function TasteBuds() {
   const [tooltip, setTooltip] = useState(null);
   const [checkedIn, setCheckedIn] = useState(new Set());
   const [selectedShow, setSelectedShow] = useState(null);
+  const [darkMode, setDarkMode] = useState(false);
 
   const toggleLike = id => setPosts(ps => ps.map(p => p.id === id ? { ...p, liked: !p.liked, likes: p.liked ? p.likes - 1 : p.likes + 1 } : p));
 
@@ -568,7 +629,7 @@ export default function TasteBuds() {
   return (
     <>
       <style>{css}</style>
-      <div className="app">
+      <div className={`app${darkMode ? " dark" : ""}`}>
 
         {/* ══ HOME FEED ══ */}
         {screen === "home" && (
@@ -758,7 +819,7 @@ export default function TasteBuds() {
               <div style={{ width: 34 }} />
               <div className="header-icons">
                 <button className="icon-btn">✉</button>
-                <button className="icon-btn">⚙</button>
+                <button className="icon-btn" onClick={() => setScreen("settings")}>⚙</button>
               </div>
             </div>
             <div className="profile-banner">Cover Photo</div>
@@ -859,6 +920,31 @@ export default function TasteBuds() {
           </div>
         )}
 
+        {/* ══ SETTINGS ══ */}
+        {/* Settings and related functionality authored by Ethan Buttram 5/26/2026*/}
+        {screen === "settings" && (
+          <div className="screen">
+            <div className="settings-header">
+              <button className="back-btn" onClick={() => setScreen("myprofile")}>←</button>
+              <div className="settings-title">Settings</div>
+            </div>
+
+            <div className="settings-section-label">Appearance</div>
+
+            <div className="settings-row">
+              <div className="settings-row-left">
+                <div className="settings-icon-label">{darkMode ? "🌙" : "☀️"}</div>
+                <div className="settings-row-label">Dark Mode</div>
+                <div className="settings-row-sub">{darkMode ? "Switch to light mode" : "Switch to dark mode"}</div>
+              </div>
+              <label className="toggle-wrap">
+                <input type="checkbox" checked={darkMode} onChange={() => setDarkMode(d => !d)} />
+                <span className="toggle-track" />
+              </label>
+            </div>
+          </div>
+        )}
+
         {/* NAV */}
         <nav className="bottom-nav">
           <button className={`nav-btn ${screen === "home" ? "active" : ""}`} onClick={() => setScreen("home")}>
@@ -870,7 +956,7 @@ export default function TasteBuds() {
           <button className={`nav-btn ${screen === "shows" ? "active" : ""}`} onClick={() => setScreen("shows")}>
             <span className="nav-icon">🎟</span><span>Shows</span>
           </button>
-          <button className={`nav-btn ${screen === "myprofile" ? "active" : ""}`} onClick={() => setScreen("myprofile")}>
+          <button className={`nav-btn ${screen === "myprofile" || screen === "settings" ? "active" : ""}`} onClick={() => setScreen("myprofile")}>
             <span className="nav-icon">◉</span><span>Profile</span>
           </button>
         </nav>
