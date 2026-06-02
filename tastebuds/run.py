@@ -2,7 +2,8 @@ from http.server import HTTPServer, SimpleHTTPRequestHandler
 import os
 
 def runTasteBuds(): # move into dist and run an http server for tastebuds to live on
-    os.chdir(r"dist")
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    os.chdir(os.path.join(script_dir, "dist"))
 
     server = HTTPServer(("localhost", 8000), SimpleHTTPRequestHandler)  # start a server and let pythons built in handler work its magic
     print("Serving Tastebuds on http://localhost:8000") # website is localhost:8000
