@@ -1,1207 +1,828 @@
 import { useState } from "react";
 
-const FONTS = `@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400;1,600&family=Instrument+Sans:wght@400;500;600&display=swap');`;
+// ── Design tokens ──────────────────────────────────────────────────────────
+const T = {
+  bg:        "#f0f0f0",
+  surface:   "#ffffff",
+  border:    "#e8e8e8",
+  dark:      "#1a1412",
+  mid:       "#7a7068",
+  subtle:    "#b0a89e",
+  pink:      "#b50063",
+  pinkSoft:  "#fbe8f1",
+  purple:    "#6B48C8",
+  purpleSoft:"#F0ECFB",
+  coral:     "#E8512A",
+  coralSoft: "#FDF0EB",
+  teal:      "#0D9E8A",
+  tealSoft:  "#E5F7F5",
+  green:     "#1DAF5E",
+  greenSoft: "#E6F8EE",
+  spotify:   "#1DB954",
+};
 
-const css = `
-  ${FONTS}
-  :root {
-    --bg:      #f0f0f0;
-    --bg2:     #e6e6e6;
-    --bg3:     #dcdcdc;
-    --border:  #cccccc;
-    --ink:     #111111;
-    --ink2:    #444444;
-    --ink3:    #888888;
-    --accent:  #b50063;
-  }
-  .app.dark {
-    --bg:      #0f0f0f;
-    --bg2:     #1a1a1a;
-    --bg3:     #242424;
-    --border:  #2e2e2e;
-    --ink:     #f0f0f0;
-    --ink2:    #b0b0b0;
-    --ink3:    #666666;
-    --accent:  #e0498a;
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; transition: background 0.25s ease, background-color 0.25s ease, border-color 0.25s ease, color 0.25s ease; }
-  .app {
-    width: 390px; max-width: 100%; margin: 0 auto; min-height: 100vh;
-    background: var(--bg); color: var(--ink);
-    font-family: 'Instrument Sans', sans-serif;
-  }
-  .screen { padding-bottom: 80px; min-height: 100vh; width: 100%; }
+// ── Shared UI primitives ───────────────────────────────────────────────────
+const Avatar = ({ size = 40, initials = "?", color = T.pink }) => (
+  <div style={{
+    width: size, height: size, borderRadius: "50%",
+    background: color + "22", border: `1.5px solid ${color}44`,
+    display: "flex", alignItems: "center", justifyContent: "center",
+    flexShrink: 0, fontSize: size * 0.36, fontWeight: 700, color,
+  }}>{initials}</div>
+);
 
-  /* NAV */
-  .bottom-nav {
-    position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
-    width: 390px; background: var(--bg); border-top: 1px solid var(--border);
-    display: flex; justify-content: space-around; padding: 10px 0 22px; z-index: 100;
-  }
-  .nav-btn {
-    background: none; border: none; color: var(--ink3); cursor: pointer;
-    display: flex; flex-direction: column; align-items: center; gap: 3px;
-    transition: color 0.2s; padding: 0 12px;
-  }
-  .nav-btn.active { color: var(--ink); }
-  .nav-icon { font-size: 19px; line-height: 1; }
-  .nav-btn span { font-size: 9px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; }
+const Pill = ({ children, color = T.pink, soft = false, small = false }) => (
+  <span style={{
+    display: "inline-flex", alignItems: "center", gap: 4,
+    padding: small ? "3px 10px" : "5px 13px",
+    borderRadius: 99,
+    background: soft ? color + "18" : color,
+    color: soft ? color : "#fff",
+    fontSize: small ? 10 : 11, fontWeight: 700, letterSpacing: "0.02em", lineHeight: 1,
+  }}>{children}</span>
+);
 
-  /* FEED HEADER */
-  .feed-header {
-    position: sticky; top: 0; z-index: 50;
-    background: color-mix(in srgb, var(--bg) 94%, transparent);
-    backdrop-filter: blur(10px);
-    border-bottom: 1px solid var(--border);
-    padding: 52px 18px 0;
-  }
-  .feed-header-top {
-    display: flex; justify-content: space-between; align-items: center;
-    padding-bottom: 12px;
-  }
-  .wordmark {
-    font-family: 'La Lou', 'Cormorant Garamond', serif;
-    font-size: 24px; font-weight: 300; font-style: italic;
-  }
-  .wordmark span { color: var(--accent); }
-  .feed-header-icons { display: flex; gap: 8px; }
-  .icon-btn {
-    width: 34px; height: 34px; border-radius: 50%;
-    background: var(--bg2); border: 1.5px solid var(--border);
-    color: var(--ink2); font-size: 14px; cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-  }
-  .feed-tabs { display: flex; }
-  .feed-tab {
-    flex: 1; background: none; border: none; cursor: pointer;
-    font-family: 'Instrument Sans', sans-serif; font-size: 13px; font-weight: 600;
-    color: var(--ink3); padding: 10px 0; position: relative; transition: color 0.18s;
-  }
-  .feed-tab.active { color: var(--ink); }
-  .feed-tab.active::after {
-    content: ''; position: absolute; bottom: 0; left: 20%; right: 20%;
-    height: 2px; background: var(--ink); border-radius: 2px;
-  }
+const Card = ({ children, style = {}, onClick }) => (
+  <div onClick={onClick} style={{
+    background: T.surface, borderRadius: 18, border: `1px solid ${T.border}`,
+    overflow: "hidden", cursor: onClick ? "pointer" : "default", ...style,
+  }}>{children}</div>
+);
 
-  /* ── NOW PLAYING STORIES ── */
-  .now-playing-row {
-    padding: 14px 0 14px 18px;
-    border-bottom: 1px solid var(--border);
-    overflow-x: auto; display: flex; gap: 16px;
-    scrollbar-width: none;
-  }
-  .now-playing-row::-webkit-scrollbar { display: none; }
-  .np-story {
-    display: flex; flex-direction: column; align-items: center; gap: 5px;
-    cursor: pointer; flex-shrink: 0;
-  }
-  .np-ring-wrap { position: relative; width: 56px; height: 56px; }
-  .np-ring {
-    width: 56px; height: 56px; border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-  }
-  .np-ring.active {
-    background: conic-gradient(var(--ink) 0%, var(--ink2) 40%, var(--ink3) 70%, var(--ink) 100%);
-    animation: ring-spin 3s linear infinite;
-  }
-  .np-ring.inactive { background: var(--bg3); }
-  @keyframes ring-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-  .np-avatar-inner {
-    width: 48px; height: 48px; border-radius: 50%;
-    background: var(--bg2); border: 2px solid var(--bg);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 23px; position: absolute; top: 4px; left: 4px;
-  }
-  .np-badge {
-    position: absolute; bottom: 0; right: 0;
-    width: 18px; height: 18px; border-radius: 50%;
-    background: var(--ink); border: 2px solid var(--bg);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 8px; color: var(--bg); font-weight: 700;
-  }
-  .np-name {
-    font-size: 10px; font-weight: 600; color: var(--ink2);
-    max-width: 56px; text-align: center;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  }
-  .np-song {
-    font-size: 9px; color: var(--ink3);
-    max-width: 56px; text-align: center;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    font-style: italic;
-  }
+const StatusBar = () => (
+  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center",
+    padding:"14px 22px 6px", fontSize:13, fontWeight:700, color:T.dark }}>
+    <span>9:41</span>
+    <div style={{ display:"flex", gap:5, alignItems:"center" }}>
+      <span style={{ fontSize:11 }}>▲▲▲</span><span>◼◼◼</span>
+    </div>
+  </div>
+);
 
-  /* now playing tooltip */
-  .np-tooltip {
-    position: fixed; bottom: 96px; left: 50%; transform: translateX(-50%);
-    background: var(--ink); color: var(--bg); border-radius: 12px; padding: 10px 16px;
-    font-size: 12px; z-index: 150; white-space: nowrap; pointer-events: none;
-    animation: fadeUp 0.25s ease; box-shadow: 0 4px 20px rgba(0,0,0,0.18);
-  }
-  .np-tooltip strong { font-weight: 600; }
-  .np-tooltip span { color: var(--ink3); margin: 0 5px; }
+// ── ONBOARDING: Progress bar ───────────────────────────────────────────────
+const ProgressBar = ({ step, total }) => (
+  <div style={{ padding:"6px 24px 0" }}>
+    <div style={{ height:3, background: T.border, borderRadius:2, overflow:"hidden" }}>
+      <div style={{ height:"100%", width:`${(step/total)*100}%`, background: T.pink,
+        borderRadius:2, transition:"width 0.4s cubic-bezier(0.22,1,0.36,1)" }} />
+    </div>
+  </div>
+);
 
-  /* COMPOSE */
-  .compose-bar {
-    display: flex; gap: 10px; padding: 14px 18px;
-    border-bottom: 1px solid var(--border);
-  }
-  .compose-avatar {
-    width: 38px; height: 38px; border-radius: 50%;
-    background: var(--bg3); border: 1px solid var(--border);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 18px; flex-shrink: 0;
-  }
-  .compose-right { flex: 1; display: flex; flex-direction: column; gap: 8px; }
-  .compose-input {
-    width: 100%; background: none; border: none; outline: none;
-    font-family: 'Instrument Sans', sans-serif; font-size: 14px;
-    color: var(--ink); caret-color: var(--ink); resize: none; padding-top: 6px;
-  }
-  .compose-input::placeholder { color: var(--ink3); }
-  .compose-actions { display: flex; justify-content: flex-end; }
-  .compose-post-btn {
-    background: var(--ink); color: var(--bg); border: none; border-radius: 20px;
-    padding: 7px 18px; font-family: 'Instrument Sans', sans-serif;
-    font-size: 12px; font-weight: 600; letter-spacing: 0.08em; cursor: pointer;
-    transition: opacity 0.15s;
-  }
-  .compose-post-btn:active { opacity: 0.75; }
+const BackBtn = ({ onBack }) => (
+  <button onClick={onBack} style={{ border:"none", background:"none", cursor:"pointer",
+    fontSize:26, color:T.dark, padding:"16px 0 8px", display:"block", lineHeight:1 }}>‹</button>
+);
 
-  /* POSTS */
-  .divider { height: 1px; background: var(--border); }
-  .post {
-    display: flex; gap: 11px; padding: 14px 18px;
-    border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.12s;
-  }
-  .post:hover { background: var(--bg2); }
-  .post-avatar-wrap { position: relative; flex-shrink: 0; }
-  .post-avatar {
-    width: 40px; height: 40px; border-radius: 50%;
-    background: var(--bg3); border: 1px solid var(--border);
-    display: flex; align-items: center; justify-content: center; font-size: 19px;
-  }
-  .post-avatar-wrap.playing .post-avatar {
-    outline: 2px solid var(--ink2); outline-offset: 2px;
-  }
-  .post-avatar-np {
-    position: absolute; bottom: -2px; right: -2px;
-    width: 16px; height: 16px; border-radius: 50%;
-    background: var(--ink); border: 1.5px solid var(--bg);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 8px; color: var(--bg);
-  }
-  .post-body { flex: 1; min-width: 0; }
-  .post-meta { display: flex; align-items: baseline; gap: 5px; margin-bottom: 4px; flex-wrap: wrap; }
-  .post-name { font-size: 13px; font-weight: 600; color: var(--ink); }
-  .post-handle { font-size: 12px; color: var(--ink3); }
-  .post-time { font-size: 11px; color: var(--ink3); margin-left: auto; }
-  .post-text { font-size: 14px; color: var(--ink2); line-height: 1.55; margin-bottom: 10px; }
-  .now-playing-pill {
-    display: inline-flex; align-items: center; gap: 7px;
-    background: var(--bg2); border: 1px solid var(--border);
-    border-radius: 10px; padding: 7px 10px; margin-bottom: 10px; width: 100%;
-  }
-  .pill-art { font-size: 18px; }
-  .pill-text { flex: 1; min-width: 0; }
-  .pill-song { font-size: 12px; font-weight: 600; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .pill-artist { font-size: 10px; color: var(--ink3); }
-  .pill-wave { font-size: 13px; color: var(--ink3); animation: pulse 1.2s infinite; }
-  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
-  .post-actions { display: flex; gap: 20px; margin-top: 2px; }
-  .action-btn {
-    background: none; border: none; cursor: pointer;
-    display: flex; align-items: center; gap: 5px;
-    font-family: 'Instrument Sans', sans-serif; font-size: 12px;
-    color: var(--ink3); transition: color 0.15s; padding: 0;
-  }
-  .action-btn:hover { color: var(--ink); }
-  .action-btn.liked { color: var(--ink); }
-  .action-icon { font-size: 14px; }
+const InputField = ({ icon, placeholder, value, type = "text", focused = false }) => (
+  <div style={{
+    display:"flex", alignItems:"center", gap:10,
+    background: T.surface, border:`1.5px solid ${focused ? T.pink : T.border}`,
+    borderRadius:12, padding:"13px 16px",
+    boxShadow: focused ? `0 0 0 3px ${T.pink}18` : "none",
+    transition:"border-color 0.2s, box-shadow 0.2s",
+  }}>
+    <span style={{ fontSize:17, opacity:0.5, flexShrink:0 }}>{icon}</span>
+    <span style={{ fontSize:16, color: value ? T.dark : T.subtle, flex:1 }}>
+      {value || placeholder}
+    </span>
+  </div>
+);
 
-  /* FIND FANS */
-  .fans-header { padding: 56px 22px 0; display: flex; justify-content: space-between; align-items: flex-end; }
-  .fans-title { font-family: 'Cormorant Garamond', serif; font-size: 32px; font-weight: 300; font-style: italic; }
-  .header-icons { display: flex; gap: 8px; }
-  .find-btn {
-    margin: 16px 22px 0; width: calc(100% - 44px);
-    background: var(--ink); color: var(--bg); border: none; border-radius: 12px;
-    padding: 14px; font-family: 'Instrument Sans', sans-serif; font-size: 12px;
-    font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; cursor: pointer;
-    display: flex; align-items: center; justify-content: center; gap: 8px;
-  }
-  .fans-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; padding: 16px 22px; }
-  .fan-card { cursor: pointer; }
-  .fan-photo {
-    width: 100%; aspect-ratio: 1; border-radius: 12px; background: var(--bg2);
-    position: relative; overflow: hidden; display: flex; align-items: center;
-    justify-content: center; font-size: 28px; margin-bottom: 7px; border: 1px solid var(--border);
-  }
-  .fan-photo.np-active { outline: 2.5px solid var(--ink2); outline-offset: 2px; }
-  .fan-np-badge {
-    position: absolute; top: 5px; right: 5px;
-    background: var(--ink); border-radius: 8px; padding: 2px 6px;
-    font-size: 8px; color: var(--bg); font-weight: 600;
-    display: flex; align-items: center; gap: 3px;
-  }
-  .fan-add {
-    position: absolute; bottom: 5px; left: 5px; width: 20px; height: 20px;
-    background: var(--ink); border-radius: 50%; display: flex; align-items: center;
-    justify-content: center; font-size: 12px; color: var(--bg); font-weight: 700; cursor: pointer;
-  }
-  .fan-add.connected { background: var(--ink2); }
-  .fan-name { font-size: 11px; font-weight: 600; color: var(--ink); margin-bottom: 1px; }
-  .fan-handle { font-size: 9px; color: var(--ink3); margin-bottom: 4px; }
-  .fan-tags { display: flex; flex-wrap: wrap; gap: 3px; }
-  .fan-tag { font-size: 8px; background: var(--bg3); border: 1px solid var(--border); color: var(--ink2); padding: 2px 5px; border-radius: 4px; font-weight: 500; }
+const BigButton = ({ children, onClick, color = T.pink, outline = false, style = {} }) => (
+  <button onClick={onClick} style={{
+    width:"100%", padding:"15px", borderRadius:14,
+    background: outline ? "transparent" : color,
+    border: outline ? `1.5px solid ${T.border}` : "none",
+    color: outline ? T.dark : "#fff",
+    fontSize:16, fontWeight:700, cursor:"pointer",
+    letterSpacing:"0.02em", ...style,
+  }}>{children}</button>
+);
 
-  /* PROFILE */
-  .profile-header { padding: 56px 22px 0; display: flex; justify-content: space-between; align-items: center; }
-  .back-btn { width: 34px; height: 34px; border-radius: 50%; background: var(--bg2); border: 1.5px solid var(--border); color: var(--ink); font-size: 15px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-  .profile-banner { margin: 14px 22px 0; height: 90px; border-radius: 14px; background: var(--bg3); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 11px; letter-spacing: 0.1em; color: var(--ink3); text-transform: uppercase; font-weight: 600; }
-  .profile-avatar-row { padding: 0 22px; margin-top: -22px; display: flex; justify-content: space-between; align-items: flex-end; }
-  .p-avatar { width: 72px; height: 72px; border-radius: 50%; background: var(--bg2); border: 3px solid var(--bg); display: flex; align-items: center; justify-content: center; font-size: 34px; }
-  .p-follow-btn { background: var(--ink); color: var(--bg); border: none; border-radius: 20px; padding: 8px 18px; font-family: 'Instrument Sans', sans-serif; font-size: 12px; font-weight: 600; cursor: pointer; }
-  .profile-info { padding: 12px 22px 0; }
-  .pname { font-family: 'Cormorant Garamond', serif; font-size: 24px; font-weight: 400; margin-bottom: 1px; }
-  .phandle { font-size: 12px; color: var(--ink3); margin-bottom: 8px; }
-  .pbio { font-size: 13px; color: var(--ink2); line-height: 1.6; margin-bottom: 10px; }
-  .pmeta { display: flex; flex-wrap: wrap; gap: 10px; font-size: 11px; color: var(--ink3); margin-bottom: 10px; }
-  .p-stats { display: flex; gap: 18px; padding: 0 22px 14px; border-bottom: 1px solid var(--border); }
-  .p-stat { font-size: 12px; color: var(--ink3); }
-  .p-stat strong { font-size: 14px; font-weight: 600; color: var(--ink); margin-right: 3px; }
-  .p-socials { display: flex; gap: 6px; }
-  .p-social { width: 28px; height: 28px; border-radius: 7px; background: var(--bg2); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 12px; cursor: pointer; }
-  .section-label { font-size: 9px; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase; color: var(--ink3); padding: 18px 22px 10px; }
-  .h-scroll { display: flex; gap: 10px; padding: 0 22px; overflow-x: auto; scrollbar-width: none; }
-  .h-scroll::-webkit-scrollbar { display: none; }
-  .album-card { flex-shrink: 0; width: 82px; cursor: pointer; }
-  .album-art { width: 82px; height: 82px; border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 26px; margin-bottom: 6px; border: 1px solid var(--border); }
-  .album-title { font-size: 10px; font-weight: 600; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .album-artist { font-size: 9px; color: var(--ink3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
-  .cold-opens { padding: 4px 22px 16px; }
-  .co-label { font-size: 9px; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase; color: var(--ink3); margin-bottom: 10px; padding-top: 14px; }
-  .co-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-  .co-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 12px 11px; }
-  .co-q { font-size: 9px; color: var(--ink3); margin-bottom: 6px; line-height: 1.5; font-weight: 500; }
-  .co-a { font-family: 'Cormorant Garamond', serif; font-size: 13px; font-style: italic; color: var(--ink); line-height: 1.35; }
+// ── SCREEN 1: Welcome ──────────────────────────────────────────────────────
+const WelcomeScreen = ({ onNext, onLogin }) => (
+  <div style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center",
+    justifyContent:"center", padding:"0 28px 40px", gap:0 }}>
+    {/* Logo */}
+    <div style={{ display:"flex", flexDirection:"column", alignItems:"center",
+      gap:14, marginBottom:36 }}>
+      <div style={{ width:96, height:96, borderRadius:"50%", background:T.dark,
+        display:"flex", alignItems:"center", justifyContent:"center",
+        boxShadow:`0 12px 40px ${T.dark}44` }}>
+        <span style={{ fontSize:42 }}>♫</span>
+      </div>
+      <div style={{ fontSize:30, fontWeight:900, color:T.dark, letterSpacing:"-0.5px" }}>
+        taste<span style={{ color:T.pink }}>buds</span>
+      </div>
+    </div>
 
-  /* MODAL */
-  .modal-overlay { position: fixed; inset: 0; background: rgba(28,25,23,0.55); z-index: 200; display: flex; align-items: flex-end; justify-content: center; backdrop-filter: blur(3px); }
-  .modal { background: var(--bg); border-radius: 22px 22px 0 0; padding: 24px 24px 44px; width: 390px; border-top: 1px solid var(--border); }
-  .modal-handle { width: 32px; height: 3px; background: var(--border); border-radius: 2px; margin: 0 auto 22px; }
-  .modal h2 { font-family: 'Cormorant Garamond', serif; font-size: 24px; font-weight: 300; font-style: italic; text-align: center; margin-bottom: 4px; }
-  .modal-sub { font-size: 11px; color: var(--ink3); text-align: center; margin-bottom: 24px; letter-spacing: 0.05em; }
-  .slot-display { background: var(--bg2); border: 1px solid var(--border); border-radius: 14px; padding: 26px 20px; text-align: center; margin-bottom: 16px; }
-  .slot-art { font-size: 48px; margin-bottom: 12px; display: block; }
-  .slot-title { font-family: 'Cormorant Garamond', serif; font-size: 22px; font-weight: 400; color: var(--ink); margin-bottom: 4px; }
-  .slot-artist { font-size: 12px; color: var(--ink3); }
-  .spin-btn { width: 100%; background: var(--ink); color: var(--bg); border: none; border-radius: 12px; padding: 14px; font-family: 'Instrument Sans', sans-serif; font-size: 12px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; cursor: pointer; }
-  .spin-btn:disabled { opacity: 0.45; }
-  .modal-close { display: block; width: 100%; background: none; border: none; color: var(--ink3); font-size: 12px; cursor: pointer; margin-top: 12px; padding: 8px; font-family: 'Instrument Sans', sans-serif; }
+    <div style={{ fontSize:26, fontWeight:800, color:T.dark, textAlign:"center",
+      lineHeight:1.2, marginBottom:10, letterSpacing:"-0.3px" }}>
+      find your people<br/>through music
+    </div>
+    <div style={{ fontSize:15, color:T.mid, textAlign:"center", lineHeight:1.65,
+      marginBottom:40, maxWidth:280 }}>
+      connect with fans who actually share your taste — not just your genre.
+    </div>
 
-  @keyframes fadeUp { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
-  .anim { animation: fadeUp 0.3s ease; }
+    <BigButton onClick={onNext} style={{ marginBottom:12 }}>Create an account</BigButton>
+    <BigButton onClick={onLogin} outline style={{ marginBottom:16 }}>Log in</BigButton>
 
-  /* ── SHOWS SCREEN ── */
-  .shows-header {
-    position: sticky; top: 0; z-index: 50;
-    background: color-mix(in srgb, var(--bg) 94%, transparent); backdrop-filter: blur(10px);
-    border-bottom: 1px solid var(--border);
-    padding: 52px 18px 14px;
-    display: flex; justify-content: space-between; align-items: flex-end;
-  }
-  .shows-title { font-family: 'Cormorant Garamond', serif; font-size: 28px; font-weight: 300; font-style: italic; line-height: 1; }
-  .shows-sub { font-size: 10px; color: var(--ink3); font-weight: 500; letter-spacing: 0.06em; margin-top: 3px; }
+    <div style={{ display:"flex", alignItems:"center", gap:12, width:"100%", margin:"4px 0 16px" }}>
+      <div style={{ flex:1, height:1, background:T.border }} />
+      <span style={{ fontSize:13, color:T.subtle, fontWeight:500 }}>or</span>
+      <div style={{ flex:1, height:1, background:T.border }} />
+    </div>
 
-  .checkin-banner {
-    margin: 16px 18px 0;
-    background: var(--ink); color: var(--bg);
-    border-radius: 16px; padding: 16px 18px;
-    display: flex; align-items: center; gap: 14px; cursor: pointer;
-    transition: opacity 0.15s;
-  }
-  .checkin-banner:active { opacity: 0.85; }
-  .checkin-icon { font-size: 28px; flex-shrink: 0; }
-  .checkin-text h4 { font-family: 'Cormorant Garamond', serif; font-size: 16px; font-weight: 400; font-style: italic; margin-bottom: 3px; }
-  .checkin-text p { font-size: 11px; opacity: 0.6; }
-  .checkin-arrow { margin-left: auto; font-size: 16px; opacity: 0.4; }
+    <button style={{ width:"100%", padding:15, borderRadius:14,
+      background:T.spotify, border:"none", color:"#fff",
+      fontSize:15, fontWeight:700, cursor:"pointer",
+      display:"flex", alignItems:"center", justifyContent:"center", gap:10 }}>
+      <span style={{ fontSize:20 }}>♪</span> Continue with Spotify
+    </button>
+  </div>
+);
 
-  .shows-section-label {
-    font-size: 9px; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase;
-    color: var(--ink3); padding: 20px 18px 10px;
-  }
+// ── SCREEN 2: Create Account (Email) ──────────────────────────────────────
+const CreateAccountScreen = ({ onNext, onBack }) => (
+  <div style={{ flex:1, display:"flex", flexDirection:"column", padding:"0 28px" }}>
+    <ProgressBar step={1} total={4} />
+    <BackBtn onBack={onBack} />
+    <div style={{ marginBottom:28 }}>
+      <div style={{ fontSize:28, fontWeight:800, color:T.dark, lineHeight:1.15,
+        letterSpacing:"-0.4px", marginBottom:8 }}>
+        Create your<br/><span style={{ color:T.pink }}>account</span>
+      </div>
+      <div style={{ fontSize:14, color:T.mid }}>start with your email and a password.</div>
+    </div>
 
-  .show-card {
-    margin: 0 18px 12px;
-    border: 1px solid var(--border); border-radius: 16px;
-    overflow: hidden; cursor: pointer; transition: border-color 0.15s;
-    background: var(--bg);
-  }
-  .show-card:hover { border-color: var(--ink2); }
-  .show-card.checked-in { border-color: var(--ink); border-width: 1.5px; }
+    <div style={{ marginBottom:18 }}>
+      <div style={{ fontSize:11, fontWeight:700, color:T.mid, letterSpacing:"0.1em",
+        textTransform:"uppercase", marginBottom:7 }}>Email</div>
+      <InputField icon="✉" value="grace@example.com" focused />
+    </div>
+    <div style={{ marginBottom:18 }}>
+      <div style={{ fontSize:11, fontWeight:700, color:T.mid, letterSpacing:"0.1em",
+        textTransform:"uppercase", marginBottom:7 }}>Password</div>
+      <InputField icon="🔒" placeholder="at least 8 characters" type="password" />
+      <div style={{ fontSize:12, color:T.subtle, marginTop:6, paddingLeft:4 }}>
+        Use a mix of letters, numbers and symbols
+      </div>
+    </div>
+    <div style={{ marginBottom:28 }}>
+      <div style={{ fontSize:11, fontWeight:700, color:T.mid, letterSpacing:"0.1em",
+        textTransform:"uppercase", marginBottom:7 }}>Confirm Password</div>
+      <InputField icon="🔒" placeholder="confirm your password" type="password" />
+    </div>
 
-  .show-card-top {
-    padding: 14px 16px 12px;
-    display: flex; gap: 14px; align-items: flex-start;
-  }
-  .show-emoji { font-size: 36px; flex-shrink: 0; line-height: 1; }
-  .show-info { flex: 1; min-width: 0; }
-  .show-artist {
-    font-family: 'Cormorant Garamond', serif;
-    font-size: 18px; font-weight: 400; color: var(--ink);
-    margin-bottom: 3px; line-height: 1.2;
-  }
-  .show-venue { font-size: 12px; color: var(--ink2); margin-bottom: 3px; }
-  .show-date { font-size: 11px; color: var(--ink3); }
-  .show-checkin-btn {
-    flex-shrink: 0; align-self: center;
-    border: 1.5px solid var(--border); background: var(--bg2);
-    border-radius: 20px; padding: 7px 14px;
-    font-family: 'Instrument Sans', sans-serif; font-size: 11px; font-weight: 600;
-    color: var(--ink2); cursor: pointer; transition: all 0.15s; white-space: nowrap;
-  }
-  .show-checkin-btn.active { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+    <div style={{ marginTop:"auto", paddingBottom:40 }}>
+      <BigButton onClick={onNext} style={{ marginBottom:14 }}>Continue</BigButton>
+      <div style={{ fontSize:12, color:T.subtle, textAlign:"center", lineHeight:1.6 }}>
+        By continuing you agree to our{" "}
+        <span style={{ color:T.pink, fontWeight:600 }}>Terms of Service</span>
+        {" "}and{" "}
+        <span style={{ color:T.pink, fontWeight:600 }}>Privacy Policy</span>
+      </div>
+    </div>
+  </div>
+);
 
-  .show-card-bottom {
-    border-top: 1px solid var(--border);
-    padding: 10px 16px;
-    display: flex; align-items: center; justify-content: space-between;
-  }
-  .show-attendees { display: flex; align-items: center; gap: 8px; }
-  .attendee-faces { display: flex; }
-  .attendee-face {
-    width: 24px; height: 24px; border-radius: 50%;
-    background: var(--bg3); border: 2px solid var(--bg);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 12px; margin-left: -6px;
-  }
-  .attendee-face:first-child { margin-left: 0; }
-  .attendee-count { font-size: 11px; color: var(--ink3); }
-  .attendee-count strong { color: var(--ink2); font-weight: 600; }
-  .show-see-all { font-size: 11px; color: var(--ink3); font-weight: 500; }
+// ── SCREEN 3: Pick Username ────────────────────────────────────────────────
+const UsernameScreen = ({ onNext, onBack }) => (
+  <div style={{ flex:1, display:"flex", flexDirection:"column", padding:"0 28px" }}>
+    <ProgressBar step={2} total={4} />
+    <BackBtn onBack={onBack} />
+    <div style={{ marginBottom:28 }}>
+      <div style={{ fontSize:28, fontWeight:800, color:T.dark, lineHeight:1.15,
+        letterSpacing:"-0.4px", marginBottom:8 }}>
+        pick a<br/><span style={{ color:T.pink }}>username</span>
+      </div>
+      <div style={{ fontSize:14, color:T.mid }}>this is how other fans will find you.</div>
+    </div>
 
-  /* ── SHOW DETAIL MODAL ── */
-  .show-modal-overlay {
-    position: fixed; inset: 0; background: rgba(28,25,23,0.55); z-index: 200;
-    display: flex; align-items: flex-end; justify-content: center; backdrop-filter: blur(3px);
-  }
-  .show-modal {
-    background: var(--bg); border-radius: 22px 22px 0 0;
-    width: 390px; max-height: 82vh; overflow-y: auto;
-    border-top: 1px solid var(--border);
-    animation: fadeUp 0.25s ease;
-  }
-  .show-modal-handle { width: 32px; height: 3px; background: var(--border); border-radius: 2px; margin: 18px auto 0; }
-  .show-modal-header {
-    padding: 16px 22px 14px;
-    border-bottom: 1px solid var(--border);
-    display: flex; gap: 14px; align-items: center;
-  }
-  .show-modal-emoji { font-size: 42px; }
-  .show-modal-info { flex: 1; }
-  .show-modal-artist { font-family: 'Cormorant Garamond', serif; font-size: 22px; font-weight: 400; margin-bottom: 3px; }
-  .show-modal-meta { font-size: 12px; color: var(--ink3); line-height: 1.6; }
-  .show-modal-checkin {
-    width: calc(100% - 44px); margin: 14px 22px 0;
-    background: var(--ink); color: var(--bg); border: none; border-radius: 12px;
-    padding: 14px; font-family: 'Instrument Sans', sans-serif; font-size: 12px;
-    font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; cursor: pointer;
-    transition: opacity 0.15s;
-  }
-  .show-modal-checkin.checked { background: var(--bg2); color: var(--ink2); border: 1.5px solid var(--border); }
-  .show-modal-attendees-label {
-    font-size: 9px; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase;
-    color: var(--ink3); padding: 18px 22px 10px;
-  }
-  .attendee-row {
-    display: flex; align-items: center; gap: 12px;
-    padding: 10px 22px; border-bottom: 1px solid var(--border);
-    cursor: pointer; transition: background 0.12s;
-  }
-  .attendee-row:hover { background: var(--bg2); }
-  .attendee-row:last-child { border-bottom: none; margin-bottom: 32px; }
-  .att-avatar {
-    width: 40px; height: 40px; border-radius: 50%; background: var(--bg2);
-    border: 1px solid var(--border); display: flex; align-items: center;
-    justify-content: center; font-size: 19px; flex-shrink: 0;
-  }
-  .att-info { flex: 1; }
-  .att-name { font-size: 13px; font-weight: 600; color: var(--ink); margin-bottom: 1px; }
-  .att-handle { font-size: 11px; color: var(--ink3); }
-  .att-compat { font-size: 11px; color: var(--ink2); font-weight: 600; }
-  .att-connect {
-    width: 30px; height: 30px; border-radius: 50%;
-    background: var(--bg2); border: 1.5px solid var(--border);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 14px; cursor: pointer; color: var(--ink); flex-shrink: 0;
-    transition: all 0.15s;
-  }
-  .att-connect.connected { background: var(--ink); color: var(--bg); border-color: var(--ink); }
-  .show-modal-close {
-    display: block; width: 100%; background: none; border: none;
-    color: var(--ink3); font-size: 12px; cursor: pointer;
-    padding: 14px; font-family: 'Instrument Sans', sans-serif;
-  }
+    <div style={{ marginBottom:16 }}>
+      <div style={{ fontSize:11, fontWeight:700, color:T.mid, letterSpacing:"0.1em",
+        textTransform:"uppercase", marginBottom:7 }}>Username</div>
+      <div style={{ display:"flex", alignItems:"center", gap:10,
+        background:T.surface, border:`1.5px solid ${T.pink}`,
+        borderRadius:12, padding:"13px 16px",
+        boxShadow:`0 0 0 3px ${T.pink}18` }}>
+        <span style={{ fontSize:17, color:T.pink, fontWeight:700 }}>@</span>
+        <span style={{ fontSize:16, color:T.dark, flex:1 }}>grxceturner</span>
+      </div>
+      <span style={{ display:"inline-flex", alignItems:"center", gap:5,
+        background:T.greenSoft, color:T.green, borderRadius:20,
+        padding:"4px 10px", fontSize:11, fontWeight:700, marginTop:8 }}>
+        ✓ available
+      </span>
+      <div style={{ fontSize:12, color:T.subtle, marginTop:7, paddingLeft:2 }}>
+        Only letters, numbers and underscores. No spaces.
+      </div>
+    </div>
 
-  /* ── SETTINGS SCREEN ── */
-  .settings-header {
-    position: sticky; top: 0; z-index: 50; width: 100%;
-    background: color-mix(in srgb, var(--bg) 94%, transparent);
-    backdrop-filter: blur(10px);
-    border-bottom: 1px solid var(--border);
-    padding: 52px 18px 14px;
-    display: flex; align-items: center; gap: 12px;
-  }
-  .settings-title {
-    font-family: 'Cormorant Garamond', serif;
-    font-size: 28px; font-weight: 300; font-style: italic; flex: 1;
-  }
-  .settings-section-label {
-    font-size: 9px; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase;
-    color: var(--ink3); padding: 22px 22px 8px; width: 100%;
-  }
-  .settings-row {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 16px 22px; border-bottom: 1px solid var(--border);
-    background: var(--bg); width: 100%;
-  }
-  .settings-row-left { display: flex; flex-direction: column; gap: 3px; }
-  .settings-row-label { font-size: 14px; font-weight: 600; color: var(--ink); }
-  .settings-row-sub { font-size: 11px; color: var(--ink3); }
+    <Card style={{ padding:"14px 16px", marginBottom:20 }}>
+      <div style={{ fontSize:11, fontWeight:700, color:T.mid, letterSpacing:"0.1em",
+        textTransform:"uppercase", marginBottom:12 }}>Your profile preview</div>
+      <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+        <Avatar size={44} initials="G" color={T.pink} />
+        <div>
+          <div style={{ fontSize:15, fontWeight:700, color:T.dark }}>grxceturner</div>
+          <div style={{ fontSize:12, color:T.subtle }}>@grxceturner</div>
+        </div>
+      </div>
+    </Card>
 
-  /* Toggle switch */
-  .toggle-wrap { position: relative; width: 48px; height: 28px; flex-shrink: 0; }
-  .toggle-wrap input { opacity: 0; width: 0; height: 0; position: absolute; }
-  .toggle-track {
-    position: absolute; inset: 0; border-radius: 14px;
-    background: var(--bg3); border: 1.5px solid var(--border);
-    cursor: pointer; transition: background 0.22s, border-color 0.22s;
-  }
-  .toggle-wrap input:checked + .toggle-track {
-    background: var(--ink); border-color: var(--ink);
-  }
-  .toggle-track::after {
-    content: ''; position: absolute;
-    top: 3px; left: 3px;
-    width: 18px; height: 18px; border-radius: 50%;
-    background: var(--bg3); border: 1px solid var(--border);
-    transition: transform 0.22s cubic-bezier(0.34,1.56,0.64,1), background 0.22s, border-color 0.22s;
-  }
-  .toggle-wrap input:checked + .toggle-track::after {
-    transform: translateX(20px);
-    background: var(--bg); border-color: var(--bg2);
-  }
-  .settings-icon-label { font-size: 18px; margin-bottom: 1px; }
+    <div style={{ marginTop:"auto", paddingBottom:40 }}>
+      <BigButton onClick={onNext}>Continue</BigButton>
+    </div>
+  </div>
+);
 
-  /* settings tappable row (chevron variant) */
-  .settings-row.tappable { cursor: pointer; transition: background 0.12s; }
-  .settings-row.tappable:hover { background: var(--bg2); }
-  .settings-row-chevron { font-size: 14px; color: var(--ink3); }
+// ── SCREEN 4: Birthday / Age Verification ─────────────────────────────────
+const BirthdayScreen = ({ onNext, onBack }) => (
+  <div style={{ flex:1, display:"flex", flexDirection:"column", padding:"0 28px" }}>
+    <ProgressBar step={3} total={4} />
+    <BackBtn onBack={onBack} />
+    <div style={{ marginBottom:28 }}>
+      <div style={{ fontSize:28, fontWeight:800, color:T.dark, lineHeight:1.15,
+        letterSpacing:"-0.4px", marginBottom:8 }}>
+        when's your<br/><span style={{ color:T.pink }}>birthday?</span>
+      </div>
+      <div style={{ fontSize:14, color:T.mid, lineHeight:1.5 }}>
+        we use this to verify your age. you must be 13+ to use Taste Buds.
+      </div>
+    </div>
 
-  /* ── PRIVACY POLICY SCREEN ── */
-  .privacy-header {
-    position: sticky; top: 0; z-index: 50; width: 100%;
-    background: color-mix(in srgb, var(--bg) 94%, transparent);
-    backdrop-filter: blur(10px);
-    border-bottom: 1px solid var(--border);
-    padding: 52px 18px 14px;
-    display: flex; align-items: center; gap: 12px;
-  }
-  .privacy-title {
-    font-family: 'Cormorant Garamond', serif;
-    font-size: 28px; font-weight: 300; font-style: italic; flex: 1;
-  }
-  .privacy-body {
-    padding: 24px 22px 32px;
-    font-size: 13px; color: var(--ink2); line-height: 1.7;
-  }
-  .privacy-body h1 {
-    font-family: 'Cormorant Garamond', serif;
-    font-size: 26px; font-weight: 400; color: var(--ink);
-    margin-bottom: 6px; margin-top: 0;
-  }
-  .privacy-body h2 {
-    font-family: 'Cormorant Garamond', serif;
-    font-size: 19px; font-weight: 400; color: var(--ink);
-    margin-top: 28px; margin-bottom: 8px;
-  }
-  .privacy-body h3 {
-    font-size: 13px; font-weight: 600; color: var(--ink);
-    letter-spacing: 0.03em; margin-top: 20px; margin-bottom: 6px;
-  }
-  .privacy-body h4 {
-    font-size: 12px; font-weight: 600; color: var(--ink2);
-    text-transform: uppercase; letter-spacing: 0.08em;
-    margin-top: 16px; margin-bottom: 6px;
-  }
-  .privacy-body p { margin-bottom: 12px; }
-  .privacy-body ul { padding-left: 18px; margin-bottom: 12px; }
-  .privacy-body li { margin-bottom: 6px; }
-  .privacy-body a { color: var(--accent); text-decoration: none; }
-  .privacy-body a:hover { text-decoration: underline; }
-  .privacy-updated {
-    font-size: 10px; color: var(--ink3); font-weight: 500;
-    letter-spacing: 0.06em; margin-bottom: 20px;
-  }
-`;
+    <div style={{ marginBottom:14 }}>
+      <div style={{ fontSize:11, fontWeight:700, color:T.mid, letterSpacing:"0.1em",
+        textTransform:"uppercase", marginBottom:10 }}>Date of birth</div>
+      <div style={{ display:"flex", gap:10 }}>
+        {[["Month","08"], ["Day","14"], ["Year","2002"]].map(([label, val], i) => (
+          <div key={i} style={{ flex: i===2 ? 1.4 : 1 }}>
+            <div style={{ fontSize:10, fontWeight:700, color:T.subtle,
+              textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:6 }}>{label}</div>
+            <div style={{ background:T.surface, border:`1.5px solid ${T.pink}`,
+              borderRadius:12, padding:"13px 10px", textAlign:"center",
+              fontSize:17, fontWeight:700, color:T.dark,
+              boxShadow:`0 0 0 3px ${T.pink}18` }}>{val}</div>
+          </div>
+        ))}
+      </div>
+    </div>
 
-const PRIVACY_HTML = `<h1>Privacy Policy</h1>
-<p>Last updated: June 05, 2026</p>
-<p>This Privacy Policy describes Our policies and procedures on the collection, use and disclosure of Your information when You use the Service and tells You about Your privacy rights and how the law protects You.</p>
-<p>We use Your Personal Data to provide and improve the Service. By using the Service, You agree to the collection and use of information in accordance with this Privacy Policy.</p>
-<h2>Interpretation and Definitions</h2>
-<h3>Interpretation</h3>
-<p>The words whose initial letters are capitalized have meanings defined under the following conditions. The following definitions shall have the same meaning regardless of whether they appear in singular or in plural.</p>
-<h3>Definitions</h3>
-<p>For the purposes of this Privacy Policy:</p>
-<ul>
-<li><p><strong>Account</strong> means a unique account created for You to access our Service or parts of our Service.</p></li>
-<li><p><strong>Affiliate</strong> means an entity that controls, is controlled by, or is under common control with a party, where &quot;control&quot; means ownership of 50% or more of the shares, equity interest or other securities entitled to vote for election of directors or other managing authority.</p></li>
-<li><p><strong>Application</strong> refers to TasteBuds, the software program provided by the Company.</p></li>
-<li><p><strong>Company</strong> (referred to as either &quot;the Company&quot;, &quot;We&quot;, &quot;Us&quot; or &quot;Our&quot; in this Privacy Policy) refers to TasteBuds.</p></li>
-<li><p><strong>Country</strong> refers to: California, United States</p></li>
-<li><p><strong>Device</strong> means any device that can access the Service such as a computer, a cell phone or a digital tablet.</p></li>
-<li><p><strong>Personal Data</strong> (or &quot;Personal Information&quot;) is any information that relates to an identified or identifiable individual.</p></li>
-<li><p><strong>Service</strong> refers to the Application.</p></li>
-<li><p><strong>Service Provider</strong> means any natural or legal person who processes the data on behalf of the Company.</p></li>
-<li><p><strong>Usage Data</strong> refers to data collected automatically, either generated by the use of the Service or from the Service infrastructure itself.</p></li>
-<li><p><strong>You</strong> means the individual accessing or using the Service, or the company, or other legal entity on behalf of which such individual is accessing or using the Service, as applicable.</p></li>
-</ul>
-<h2>Collecting and Using Your Personal Data</h2>
-<h3>Types of Data Collected</h3>
-<h4>Personal Data</h4>
-<p>While using Our Service, We may ask You to provide Us with certain personally identifiable information that can be used to contact or identify You.</p>
-<h4>Usage Data</h4>
-<p>Usage Data is collected automatically when using the Service.</p>
-<p>Usage Data may include information such as Your Device's Internet Protocol address (e.g. IP address), browser type, browser version, the pages of our Service that You visit, the time and date of Your visit, the time spent on those pages, unique device identifiers and other diagnostic data.</p>
-<p>When You access the Service by or through a mobile device, We may collect certain information automatically, including, but not limited to, the type of mobile device You use, Your mobile device's unique ID, the IP address of Your mobile device, Your mobile operating system, the type of mobile Internet browser You use, unique device identifiers and other diagnostic data.</p>
-<h4>Information Collected while Using the Application</h4>
-<p>While using Our Application, in order to provide features of Our Application, We may collect, with Your prior permission:</p>
-<ul>
-<li>Information regarding your location</li>
-</ul>
-<p>You can enable or disable access to this information at any time, through Your Device settings.</p>
-<h3>Use of Your Personal Data</h3>
-<p>The Company may use Personal Data for the following purposes:</p>
-<ul>
-<li><p><strong>To provide and maintain our Service</strong>, including to monitor the usage of our Service.</p></li>
-<li><p><strong>To manage Your Account:</strong> to manage Your registration as a user of the Service.</p></li>
-<li><p><strong>For the performance of a contract:</strong> the development, compliance and undertaking of the purchase contract for the products, items or services You have purchased or of any other contract with Us through the Service.</p></li>
-<li><p><strong>To contact You:</strong> To contact You by email, telephone calls, SMS, or other equivalent forms of electronic communication.</p></li>
-<li><p><strong>To provide You</strong> with news, special offers, and general information about other goods, services and events which We offer.</p></li>
-<li><p><strong>To manage Your requests:</strong> To attend and manage Your requests to Us.</p></li>
-<li><p><strong>For business transfers:</strong> We may use Your Personal Data to evaluate or conduct a merger, divestiture, restructuring, reorganization, dissolution, or other sale or transfer of some or all of Our assets.</p></li>
-<li><p><strong>For other purposes</strong>: We may use Your information for other purposes, such as data analysis, identifying usage trends, determining the effectiveness of our promotional campaigns and to evaluate and improve our Service.</p></li>
-</ul>
-<h3>Retention of Your Personal Data</h3>
-<p>The Company will retain Your Personal Data only for as long as is necessary for the purposes set out in this Privacy Policy. We will retain and use Your Personal Data to the extent necessary to comply with our legal obligations, resolve disputes, and enforce our legal agreements and policies.</p>
-<ul>
-<li><p>Account Information: retained for the duration of your account relationship plus up to 24 months after account closure.</p></li>
-<li><p>Application usage statistics: up to 24 months to understand feature adoption and service improvements.</p></li>
-<li><p>Server logs (IP addresses, access times): up to 24 months for security monitoring and troubleshooting purposes.</p></li>
-</ul>
-<h3>Transfer of Your Personal Data</h3>
-<p>Your information, including Personal Data, is processed at the Company's operating offices and in any other places where the parties involved in the processing are located. The Company will take all steps reasonably necessary to ensure that Your data is treated securely and in accordance with this Privacy Policy.</p>
-<h3>Delete Your Personal Data</h3>
-<p>You have the right to delete or request that We assist in deleting the Personal Data that We have collected about You. You may update, amend, or delete Your information at any time by signing in to Your Account and visiting the account settings section.</p>
-<h3>Disclosure of Your Personal Data</h3>
-<h4>Business Transactions</h4>
-<p>If the Company is involved in a merger, acquisition or asset sale, Your Personal Data may be transferred. We will provide notice before Your Personal Data is transferred and becomes subject to a different Privacy Policy.</p>
-<h4>Law Enforcement</h4>
-<p>Under certain circumstances, the Company may be required to disclose Your Personal Data if required to do so by law or in response to valid requests by public authorities.</p>
-<h4>Other Legal Requirements</h4>
-<p>The Company may disclose Your Personal Data in the good faith belief that such action is necessary to:</p>
-<ul>
-<li>Comply with a legal obligation</li>
-<li>Protect and defend the rights or property of the Company</li>
-<li>Prevent or investigate possible wrongdoing in connection with the Service</li>
-<li>Protect the personal safety of Users of the Service or the public</li>
-<li>Protect against legal liability</li>
-</ul>
-<h3>Security of Your Personal Data</h3>
-<p>The security of Your Personal Data is important to Us, but remember that no method of transmission over the Internet, or method of electronic storage is 100% secure. While We strive to use commercially reasonable means to protect Your Personal Data, We cannot guarantee its absolute security.</p>
-<h2>Children's Privacy</h2>
-<p>Our Service does not address anyone under the age of 16. We do not knowingly collect personally identifiable information from anyone under the age of 16. If You are a parent or guardian and You are aware that Your child has provided Us with Personal Data, please contact Us.</p>
-<h2>Links to Other Websites</h2>
-<p>Our Service may contain links to other websites that are not operated by Us. If You click on a third party link, You will be directed to that third party's site. We strongly advise You to review the Privacy Policy of every site You visit.</p>
-<h2>Changes to this Privacy Policy</h2>
-<p>We may update Our Privacy Policy from time to time. We will notify You of any changes by posting the new Privacy Policy on this page and updating the &quot;Last updated&quot; date at the top of this Privacy Policy.</p>
-<h2>Contact Us</h2>
-<p>If you have any questions about this Privacy Policy, You can contact us:</p>
-<ul>
-<li>By email: graceovturner@gmail.com</li>
-</ul>`;
+    <div style={{ background:T.pinkSoft, border:`1px solid ${T.pink}44`,
+      borderRadius:12, padding:"12px 14px",
+      display:"flex", alignItems:"center", gap:10, marginBottom:14 }}>
+      <span style={{ fontSize:20 }}>✓</span>
+      <span style={{ fontSize:13, color:T.pink, fontWeight:700 }}>Age verified — you're good to go!</span>
+    </div>
 
-const slotSongs = [
-  { emoji: "🎹", title: "Vienna", artist: "Billy Joel" },
-  { emoji: "🌈", title: "Golden", artist: "Harry Styles" },
-  { emoji: "🦋", title: "Shake It Out", artist: "Florence + The Machine" },
-  { emoji: "🌙", title: "Lua", artist: "Bright Eyes" },
-  { emoji: "🔮", title: "Retrograde", artist: "James Blake" },
-  { emoji: "🎸", title: "The Less I Know", artist: "Tame Impala" },
-  { emoji: "🕊️", title: "White Flag", artist: "Joseph" },
-  { emoji: "🌿", title: "Motion Picture Soundtrack", artist: "Radiohead" },
+    <Card style={{ padding:"14px 16px" }}>
+      <div style={{ display:"flex", alignItems:"flex-start", gap:10 }}>
+        <span style={{ fontSize:20, marginTop:1 }}>🔒</span>
+        <div>
+          <div style={{ fontSize:13, fontWeight:700, color:T.dark, marginBottom:3 }}>
+            Your data stays private
+          </div>
+          <div style={{ fontSize:12, color:T.mid, lineHeight:1.5 }}>
+            We only use your birthday for age verification. It won't be shown on your profile.
+          </div>
+        </div>
+      </div>
+    </Card>
+
+    <div style={{ marginTop:"auto", paddingBottom:40 }}>
+      <BigButton onClick={onNext}>Continue</BigButton>
+    </div>
+  </div>
+);
+
+// ── SCREEN 5: Connect Spotify ──────────────────────────────────────────────
+const SpotifyScreen = ({ onNext, onSkip }) => (
+  <div style={{ flex:1, display:"flex", flexDirection:"column", padding:"0 28px" }}>
+    <ProgressBar step={4} total={4} />
+    <div style={{ flex:1, display:"flex", flexDirection:"column",
+      alignItems:"center", paddingTop:28, paddingBottom:40 }}>
+      <div style={{ width:110, height:110, borderRadius:"50%", background:T.spotify,
+        display:"flex", alignItems:"center", justifyContent:"center", fontSize:52,
+        marginBottom:24, boxShadow:`0 12px 40px ${T.spotify}44` }}>♪</div>
+
+      <div style={{ fontSize:26, fontWeight:800, color:T.dark, textAlign:"center",
+        letterSpacing:"-0.3px", marginBottom:10 }}>connect your<br/>Spotify</div>
+      <div style={{ fontSize:14, color:T.mid, textAlign:"center", lineHeight:1.65,
+        marginBottom:28, maxWidth:280 }}>
+        your listening data is how we match you with fans who actually get it.
+      </div>
+
+      <div style={{ width:"100%", display:"flex", flexDirection:"column",
+        gap:10, marginBottom:28 }}>
+        {[
+          { icon:"🎵", title:"Music Matching", sub:"match by top artists, albums & listening patterns" },
+          { icon:"♫",  title:"Now Playing",    sub:"share what you're listening to in real time" },
+          { icon:"🧾", title:"Monthly Receipts", sub:"your listening history, wrapped monthly" },
+          { icon:"💿", title:"Top Albums",      sub:"auto-populate your profile with your favourites" },
+        ].map((p, i) => (
+          <Card key={i} style={{ padding:"12px 14px" }}>
+            <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+              <span style={{ fontSize:22, flexShrink:0 }}>{p.icon}</span>
+              <div>
+                <div style={{ fontSize:14, fontWeight:600, color:T.dark, marginBottom:2 }}>{p.title}</div>
+                <div style={{ fontSize:12, color:T.mid }}>{p.sub}</div>
+              </div>
+            </div>
+          </Card>
+        ))}
+      </div>
+
+      <button onClick={onNext} style={{ width:"100%", padding:15, borderRadius:14,
+        background:T.spotify, border:"none", color:"#fff",
+        fontSize:16, fontWeight:700, cursor:"pointer",
+        display:"flex", alignItems:"center", justifyContent:"center",
+        gap:10, marginBottom:14 }}>
+        <span style={{ fontSize:20 }}>♪</span> Connect Spotify
+      </button>
+      <button onClick={onSkip} style={{ border:"none", background:"none",
+        cursor:"pointer", fontSize:13, color:T.subtle }}>
+        skip for now — connect later in settings
+      </button>
+    </div>
+  </div>
+);
+
+// ── TAB BAR ────────────────────────────────────────────────────────────────
+const TabBar = ({ active, setScreen }) => {
+  const tabs = [
+    { id:"home",     icon:"⌂",  label:"Home"     },
+    { id:"find",     icon:"◎",  label:"Find"     },
+    { id:"shows",    icon:"♦",  label:"Shows"    },
+    { id:"messages", icon:"✉",  label:"Messages" },
+    { id:"profile",  icon:"◉",  label:"Profile"  },
+  ];
+  const accentFor = { home:T.pink, find:T.purple, shows:T.coral, messages:T.teal, profile:T.pink };
+  return (
+    <div style={{ position:"absolute", bottom:0, left:0, right:0,
+      background:T.surface, borderTop:`1px solid ${T.border}`,
+      display:"flex", paddingBottom:20 }}>
+      {tabs.map(tab => {
+        const isActive = active === tab.id;
+        const accent = accentFor[tab.id];
+        return (
+          <button key={tab.id} onClick={() => setScreen(tab.id)} style={{
+            flex:1, border:"none", background:"none", cursor:"pointer",
+            display:"flex", flexDirection:"column", alignItems:"center",
+            padding:"10px 0 0", gap:3 }}>
+            <span style={{ fontSize:20, lineHeight:1, color:isActive ? accent : T.subtle }}>{tab.icon}</span>
+            <span style={{ fontSize:10, fontWeight:isActive ? 700 : 500,
+              color:isActive ? accent : T.subtle }}>{tab.label}</span>
+            {isActive && <div style={{ width:20, height:2.5, borderRadius:2,
+              background:accent, marginTop:1 }} />}
+          </button>
+        );
+      })}
+    </div>
+  );
+};
+
+// ── HOME FEED ──────────────────────────────────────────────────────────────
+const stories = [
+  { init:"M", color:T.pink,   name:"maya",   song:"The 1975"     },
+  { init:"J", color:T.purple, name:"jake",   song:"Oasis"        },
+  { init:"Z", color:T.coral,  name:"zoe",    song:"Olivia R"     },
+  { init:"L", color:T.teal,   name:"leo",    song:"Sabrina"      },
+  { init:"A", color:T.green,  name:"aria",   song:"H.Styles"     },
 ];
 
-const NOW_PLAYING_STORIES = [
-  { id: 1, emoji: "🎵", name: "Maya", song: "Skinny Love", artist: "Bon Iver", active: true },
-  { id: 2, emoji: "⚡", name: "Tyler", song: "HUMBLE.", artist: "Kendrick", active: true },
-  { id: 3, emoji: "🌙", name: "Jordan", song: "Supermodel", artist: "SZA", active: true },
-  { id: 4, emoji: "🎸", name: "Sam", song: "—", artist: "", active: false },
-  { id: 5, emoji: "🌸", name: "Priya", song: "Spicy", artist: "aespa", active: true },
-  { id: 6, emoji: "🎹", name: "Alex", song: "—", artist: "", active: false },
+const feedPosts = [
+  { init:"M", color:T.pink,   name:"Maya R.",    handle:"@mayar",
+    content:"ok The 1975 just dropped something and i cannot stop",
+    song:"The 1975 — All I Need To Hear", tag:"🎵", match:"92%", time:"2m" },
+  { init:"J", color:T.purple, name:"Jake M.",    handle:"@jakemm",
+    content:"saw Phoebe Bridgers last night and i genuinely cannot recover",
+    song:"Phoebe Bridgers — Motion Sickness", tag:"🎟", match:"87%", time:"14m" },
+  { init:"Z", color:T.coral,  name:"Zoe K.",     handle:"@zoek",
+    content:"monthly receipt just dropped and embarrassing as expected",
+    song:"Olivia Rodrigo — vampire", tag:"🧾", match:"84%", time:"1h" },
 ];
 
-const INITIAL_POSTS = [
-  { id: 1, emoji: "🎵", name: "Maya Chen", handle: "@mayatunes", time: "2m", text: "why does 'For Emma, Forever Ago' hit different at 2am? asking for a friend (the friend is me, it's always me)", nowPlaying: { emoji: "🪵", song: "Skinny Love", artist: "Bon Iver" }, likes: 42, replies: 8, reposts: 5, liked: false, playing: true },
-  { id: 2, emoji: "⚡", name: "Tyler Fox", handle: "@tylerfox", time: "14m", text: "unpopular opinion: MBDTF is not even Kanye's best album. 808s changed the trajectory of pop music more than any other record this century. fight me", nowPlaying: null, likes: 118, replies: 34, reposts: 21, liked: false, playing: true },
-  { id: 3, emoji: "🌙", name: "Jordan Lee", handle: "@jlee_music", time: "31m", text: "just got back from the SZA show and I am not okay. she played Supermodel and I physically left my body", nowPlaying: { emoji: "🌹", song: "Supermodel", artist: "SZA" }, likes: 207, replies: 19, reposts: 44, liked: false, playing: true },
-  { id: 4, emoji: "🌸", name: "Priya Nair", handle: "@priyabeats", time: "1h", text: "the way a song can teleport you to a specific Tuesday afternoon in 2011 that you forgot existed until just now", nowPlaying: null, likes: 331, replies: 61, reposts: 88, liked: false, playing: false },
-  { id: 5, emoji: "🎸", name: "Sam Rivera", handle: "@samriv", time: "2h", text: "opened a new vinyl shop on Sunset and they had an original pressing of 'Unknown Pleasures' behind the counter. did not buy it. still thinking about it.", nowPlaying: { emoji: "🖤", song: "She's Lost Control", artist: "Joy Division" }, likes: 56, replies: 12, reposts: 7, liked: false, playing: false },
-  { id: 6, emoji: "🎹", name: "Alex Kim", handle: "@alexkbeats", time: "3h", text: "spent 4 hours on a 40 second loop. this is fine. music production is fine.", nowPlaying: null, likes: 94, replies: 23, reposts: 15, liked: false, playing: false },
-];
+const HomeScreen = () => (
+  <div style={{ flex:1, overflowY:"auto", paddingBottom:80 }}>
+    <div style={{ padding:"4px 20px 0", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+      <span style={{ fontSize:22, fontWeight:900, color:T.pink, letterSpacing:"-0.5px" }}>tastebuds</span>
+      <button style={{ background:T.pinkSoft, border:"none", borderRadius:12,
+        padding:"6px 12px", fontSize:18, cursor:"pointer" }}>🎰</button>
+    </div>
+    <div style={{ display:"flex", padding:"12px 20px 0", gap:4 }}>
+      {["For You","Following"].map((t,i) => (
+        <button key={t} style={{ border:"none", background:"none", cursor:"pointer",
+          fontSize:14, fontWeight:i===0 ? 700 : 500,
+          color:i===0 ? T.dark : T.mid, padding:"4px 10px 8px",
+          borderBottom:i===0 ? `2.5px solid ${T.pink}` : "2.5px solid transparent" }}>{t}</button>
+      ))}
+    </div>
+    <div style={{ height:1, background:T.border, margin:"0 0 12px" }} />
+    <div style={{ paddingLeft:16, overflowX:"auto", display:"flex", gap:14, paddingBottom:16 }}>
+      {stories.map((s,i) => (
+        <div key={i} style={{ display:"flex", flexDirection:"column", alignItems:"center",
+          gap:5, flexShrink:0, width:60 }}>
+          <div style={{ padding:2.5, borderRadius:"50%",
+            background:`conic-gradient(${s.color},${s.color}88,${s.color})` }}>
+            <div style={{ padding:2, borderRadius:"50%", background:T.bg }}>
+              <Avatar size={46} initials={s.init} color={s.color} />
+            </div>
+          </div>
+          <span style={{ fontSize:10, fontWeight:500, color:T.mid }}>{s.name}</span>
+          <span style={{ fontSize:9, color:T.subtle, textAlign:"center",
+            maxWidth:60, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{s.song}</span>
+        </div>
+      ))}
+    </div>
+    <div style={{ margin:"0 16px 14px", display:"flex", gap:10, alignItems:"center" }}>
+      <Avatar size={34} initials="G" color={T.pink} />
+      <div style={{ flex:1, background:T.surface, border:`1px solid ${T.border}`,
+        borderRadius:24, padding:"9px 16px", fontSize:13, color:T.subtle }}>
+        what are you listening to?
+      </div>
+    </div>
+    <div style={{ height:1, background:T.border, margin:"0 0 8px" }} />
+    {feedPosts.map((p,i) => (
+      <div key={i} style={{ padding:"14px 16px", borderBottom:`1px solid ${T.border}` }}>
+        <div style={{ display:"flex", gap:10, alignItems:"flex-start" }}>
+          <Avatar size={38} initials={p.init} color={p.color} />
+          <div style={{ flex:1 }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:2 }}>
+              <div>
+                <span style={{ fontSize:13, fontWeight:700, color:T.dark }}>{p.name}</span>
+                <span style={{ fontSize:12, color:T.subtle, marginLeft:6 }}>{p.handle}</span>
+              </div>
+              <span style={{ fontSize:11, color:T.subtle }}>{p.time}</span>
+            </div>
+            <p style={{ fontSize:14, color:T.dark, margin:"4px 0 8px", lineHeight:1.45 }}>{p.content}</p>
+            <div style={{ display:"flex", alignItems:"center", gap:10,
+              background:p.color+"0F", border:`1px solid ${p.color}22`,
+              borderRadius:12, padding:"8px 12px", marginBottom:10 }}>
+              <span style={{ fontSize:16 }}>{p.tag}</span>
+              <span style={{ fontSize:12, fontWeight:600, color:T.dark }}>{p.song}</span>
+            </div>
+            <div style={{ display:"flex", gap:16, alignItems:"center" }}>
+              {["♡ 12","↩ reply","↗"].map((a,j) => (
+                <button key={j} style={{ border:"none", background:"none",
+                  cursor:"pointer", fontSize:12, color:T.mid, fontWeight:500 }}>{a}</button>
+              ))}
+              <Pill small color={p.color} soft>{p.match} match</Pill>
+            </div>
+          </div>
+        </div>
+      </div>
+    ))}
+  </div>
+);
 
+// ── FIND FANS ──────────────────────────────────────────────────────────────
 const fans = [
-  { emoji: "🎵", name: "Maya Chen", handle: "@mayatunes", tags: ["Alt-Pop", "Indie"], id: 1, bio: "Music is my love language. Always at a show, always making playlists nobody asked for.", compat: 91, cold: ["Lana's Born to Die", "St. Vincent", "Early 2000s emo", "Filthy Frank era, 2015"], topAlbums: [{emoji:"🌹",title:"NFR!",artist:"Lana Del Rey",bg:"#e8dde4"},{emoji:"🎸",title:"Illinois",artist:"Sufjan Stevens",bg:"#dde0e8"},{emoji:"🌿",title:"For Emma",artist:"Bon Iver",bg:"#dde8dd"},{emoji:"🌙",title:"Blue",artist:"Joni Mitchell",bg:"#dde4e8"}], playing: true, nowSong: "Skinny Love" },
-  { emoji: "🌙", name: "Jordan Lee", handle: "@jlee_music", tags: ["R&B", "Soul"], id: 2, bio: "I will cry at any Stevie Wonder song, guaranteed. SZA changed my life twice.", compat: 78, cold: ["Ctrl — SZA", "Beyoncé's Lemonade", "90s neo-soul", "Drake phase (briefly)"], topAlbums: [{emoji:"🌊",title:"Ctrl",artist:"SZA",bg:"#e0e8e8"},{emoji:"💛",title:"Lemonade",artist:"Beyoncé",bg:"#e8e4d8"},{emoji:"🌸",title:"Blonde",artist:"Frank Ocean",bg:"#e8dde0"},{emoji:"🎷",title:"Kind of Blue",artist:"Miles Davis",bg:"#dde0e8"}], playing: true, nowSong: "Supermodel" },
-  { emoji: "🎸", name: "Sam Rivera", handle: "@samriv", tags: ["Rock", "Punk"], id: 3, bio: "Venue rat. If there's a mosh pit, I'm in it. Dad rock is actually the best rock.", compat: 64, cold: ["London Calling", "Nevermind", "Mid-2000s post-punk", "Nickelback. I said it."], topAlbums: [{emoji:"🖤",title:"Unknown Pleasures",artist:"Joy Division",bg:"#e0e0e0"},{emoji:"⚡",title:"London Calling",artist:"The Clash",bg:"#e8e0d8"},{emoji:"🎸",title:"Nevermind",artist:"Nirvana",bg:"#d8e4e8"},{emoji:"🔥",title:"Is This It",artist:"The Strokes",bg:"#e8e0d8"}], playing: false, nowSong: null },
-  { emoji: "🎹", name: "Alex Kim", handle: "@alexkbeats", tags: ["Electronic"], id: 4, bio: "Producer by night, barista by day. Everything sounds better at 2am.", compat: 85, cold: ["Boards of Canada — Geogaddi", "Burial's Untrue", "Ambient electronica", "EDM drop era"], topAlbums: [{emoji:"🌌",title:"Geogaddi",artist:"Boards of Canada",bg:"#e0dde8"},{emoji:"🌧",title:"Untrue",artist:"Burial",bg:"#d8dde4"},{emoji:"🔮",title:"Music Has the Right",artist:"Four Tet",bg:"#dde8e0"},{emoji:"🌊",title:"Selected Ambient",artist:"Brian Eno",bg:"#dde0e8"}], playing: true, nowSong: "Retrograde" },
-  { emoji: "🌸", name: "Priya Nair", handle: "@priyabeats", tags: ["Pop", "K-Pop"], id: 5, bio: "Certified album-listener. Skip button is illegal in my household.", compat: 73, cold: ["MAMAMOO's Reality in Black", "Red Velvet — Perfect Velvet", "Early K-pop", "One Direction, unironically"], topAlbums: [{emoji:"🌺",title:"Reality in Black",artist:"MAMAMOO",bg:"#e8dde0"},{emoji:"🍒",title:"Perfect Velvet",artist:"Red Velvet",bg:"#e8d8d8"},{emoji:"🎀",title:"Midnights",artist:"Taylor Swift",bg:"#d8dde8"},{emoji:"✨",title:"Future Nostalgia",artist:"Dua Lipa",bg:"#dde8e4"}], playing: true, nowSong: "Spicy" },
-  { emoji: "⚡", name: "Tyler Fox", handle: "@tylerfox", tags: ["Hip-Hop"], id: 6, bio: "I have an opinion about every Kanye album and yes I will share it.", compat: 88, cold: ["My Beautiful Dark Twisted Fantasy", "Illmatic", "Golden age hip-hop", "Mumble rap phase (short-lived)"], topAlbums: [{emoji:"🌌",title:"MBDTF",artist:"Kanye West",bg:"#e0dde8"},{emoji:"🔥",title:"Illmatic",artist:"Nas",bg:"#e8e0d8"},{emoji:"⚡",title:"Ready to Die",artist:"Notorious B.I.G.",bg:"#e4e0d8"},{emoji:"🎤",title:"Madvillainy",artist:"Madvillain",bg:"#dde0e4"}], playing: true, nowSong: "HUMBLE." },
+  { init:"M", color:T.pink,   name:"Maya R.",    match:"92%", artists:"The 1975 · Phoebe B", live:true  },
+  { init:"J", color:T.purple, name:"Jake M.",    match:"87%", artists:"Oasis · Blur",         live:false },
+  { init:"Z", color:T.coral,  name:"Zoe K.",     match:"84%", artists:"Olivia R · Sabrina",   live:true  },
+  { init:"L", color:T.teal,   name:"Leo P.",     match:"79%", artists:"Harry S · 1D",         live:false },
+  { init:"A", color:T.green,  name:"Aria W.",    match:"76%", artists:"Sombr · Addison R",    live:true  },
+  { init:"S", color:T.purple, name:"Sam T.",     match:"71%", artists:"The 1975 · Oasis",     live:false },
 ];
 
-const SHOWS = [
-  {
-    id: 1, emoji: "🌹", artist: "Sabrina Carpenter", venue: "Kia Forum, Inglewood", date: "Tonight · Doors 7pm", going: 3,
-    attendees: [
-      { id: 1, emoji: "🎵", name: "Maya Chen", handle: "@mayatunes", compat: 91 },
-      { id: 5, emoji: "🌸", name: "Priya Nair", handle: "@priyabeats", compat: 73 },
-      { id: 2, emoji: "🌙", name: "Jordan Lee", handle: "@jlee_music", compat: 78 },
-    ]
-  },
-  {
-    id: 2, emoji: "⚡", artist: "Kendrick Lamar", venue: "SoFi Stadium, Inglewood", date: "Sat May 24 · Doors 6pm", going: 5,
-    attendees: [
-      { id: 6, emoji: "⚡", name: "Tyler Fox", handle: "@tylerfox", compat: 88 },
-      { id: 3, emoji: "🎸", name: "Sam Rivera", handle: "@samriv", compat: 64 },
-      { id: 4, emoji: "🎹", name: "Alex Kim", handle: "@alexkbeats", compat: 85 },
-      { id: 1, emoji: "🎵", name: "Maya Chen", handle: "@mayatunes", compat: 91 },
-      { id: 2, emoji: "🌙", name: "Jordan Lee", handle: "@jlee_music", compat: 78 },
-    ]
-  },
-  {
-    id: 3, emoji: "🌌", artist: "Mitski", venue: "Hollywood Bowl, Los Angeles", date: "Fri May 30 · Doors 7:30pm", going: 2,
-    attendees: [
-      { id: 1, emoji: "🎵", name: "Maya Chen", handle: "@mayatunes", compat: 91 },
-      { id: 5, emoji: "🌸", name: "Priya Nair", handle: "@priyabeats", compat: 73 },
-    ]
-  },
-  {
-    id: 4, emoji: "🎹", artist: "James Blake", venue: "The Wiltern, Los Angeles", date: "Tue Jun 3 · Doors 8pm", going: 1,
-    attendees: [
-      { id: 4, emoji: "🎹", name: "Alex Kim", handle: "@alexkbeats", compat: 85 },
-    ]
-  },
-  {
-    id: 5, emoji: "🌊", artist: "SZA", venue: "Crypto.com Arena, Los Angeles", date: "Sat Jun 7 · Doors 6:30pm", going: 4,
-    attendees: [
-      { id: 2, emoji: "🌙", name: "Jordan Lee", handle: "@jlee_music", compat: 78 },
-      { id: 5, emoji: "🌸", name: "Priya Nair", handle: "@priyabeats", compat: 73 },
-      { id: 6, emoji: "⚡", name: "Tyler Fox", handle: "@tylerfox", compat: 88 },
-      { id: 1, emoji: "🎵", name: "Maya Chen", handle: "@mayatunes", compat: 91 },
-    ]
-  },
+const FindFansScreen = () => (
+  <div style={{ flex:1, overflowY:"auto", paddingBottom:80 }}>
+    <div style={{ padding:"4px 20px 12px", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+      <span style={{ fontSize:20, fontWeight:800, color:T.dark }}>find fans</span>
+      <Pill color={T.purple} soft small>◎ nearby</Pill>
+    </div>
+    <div style={{ margin:"0 16px 14px", position:"relative" }}>
+      <span style={{ position:"absolute", left:14, top:"50%", transform:"translateY(-50%)",
+        fontSize:14, color:T.subtle }}>🔍</span>
+      <input readOnly style={{ width:"100%", padding:"10px 14px 10px 36px",
+        border:`1px solid ${T.border}`, borderRadius:14, background:T.surface,
+        fontSize:14, color:T.mid, outline:"none", boxSizing:"border-box",
+        fontFamily:"inherit" }} placeholder="search by artist or name" />
+    </div>
+    <div style={{ height:1, background:T.border, margin:"0 0 16px" }} />
+    <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, padding:"0 16px" }}>
+      {fans.map((f,i) => (
+        <Card key={i} style={{ padding:14 }}>
+          <div style={{ display:"flex", justifyContent:"space-between",
+            alignItems:"flex-start", marginBottom:10 }}>
+            <Avatar size={44} initials={f.init} color={f.color} />
+            {f.live && <Pill color={T.green} small>♫ live</Pill>}
+          </div>
+          <div style={{ fontSize:13, fontWeight:700, color:T.dark, marginBottom:2 }}>{f.name}</div>
+          <div style={{ fontSize:10, color:T.mid, marginBottom:8, lineHeight:1.4 }}>{f.artists}</div>
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+            <Pill color={f.color} soft small>{f.match}</Pill>
+            <button style={{ border:`1.5px solid ${f.color}`, borderRadius:20,
+              background:"none", color:f.color, fontSize:11, fontWeight:700,
+              padding:"4px 10px", cursor:"pointer" }}>+ connect</button>
+          </div>
+        </Card>
+      ))}
+    </div>
+  </div>
+);
+
+// ── SHOWS ──────────────────────────────────────────────────────────────────
+const shows = [
+  { artist:"The 1975",         venue:"Kia Forum, LA",        date:"Aug 12", fans:14, color:T.pink   },
+  { artist:"Phoebe Bridgers",  venue:"Greek Theatre, LA",    date:"Aug 19", fans:8,  color:T.purple },
+  { artist:"Olivia Rodrigo",   venue:"Crypto.com Arena, LA", date:"Sep 3",  fans:22, color:T.coral  },
+  { artist:"Sabrina Carpenter",venue:"Hollywood Bowl, LA",   date:"Sep 14", fans:11, color:T.teal   },
 ];
 
-export default function TasteBuds() {
-  const [screen, setScreen] = useState("home");
-  const [feedTab, setFeedTab] = useState("trending");
-  const [posts, setPosts] = useState(INITIAL_POSTS);
-  const [draft, setDraft] = useState("");
-  const [slotOpen, setSlotOpen] = useState(false);
-  const [currentSong, setCurrentSong] = useState(slotSongs[0]);
-  const [spinning, setSpinning] = useState(false);
-  const [connected, setConnected] = useState(new Set());
-  const [selectedFan, setSelectedFan] = useState(null);
-  const [tooltip, setTooltip] = useState(null);
-  const [checkedIn, setCheckedIn] = useState(new Set());
-  const [selectedShow, setSelectedShow] = useState(null);
-  const [darkMode, setDarkMode] = useState(false);
+const ShowsScreen = () => (
+  <div style={{ flex:1, overflowY:"auto", paddingBottom:80 }}>
+    <div style={{ padding:"4px 20px 12px", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+      <span style={{ fontSize:20, fontWeight:800, color:T.dark }}>shows near you</span>
+      <Pill color={T.coral} soft small>📍 LA</Pill>
+    </div>
+    <div style={{ height:1, background:T.border, margin:"0 0 14px" }} />
+    <div style={{ display:"flex", flexDirection:"column", gap:12, padding:"0 16px" }}>
+      {shows.map((s,i) => (
+        <Card key={i}>
+          <div style={{ display:"flex", gap:0 }}>
+            <div style={{ width:5, background:s.color, flexShrink:0, borderRadius:"18px 0 0 18px" }} />
+            <div style={{ padding:"14px 14px 14px 14px", flex:1 }}>
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
+                <div>
+                  <div style={{ fontSize:15, fontWeight:800, color:T.dark, marginBottom:3 }}>{s.artist}</div>
+                  <div style={{ fontSize:12, color:T.mid, marginBottom:6 }}>{s.venue}</div>
+                  <Pill color={s.color} soft small>📅 {s.date}</Pill>
+                </div>
+                <button style={{ background:s.color, color:"#fff", border:"none",
+                  borderRadius:12, padding:"8px 14px", fontSize:12, fontWeight:700, cursor:"pointer" }}>
+                  check in
+                </button>
+              </div>
+              <div style={{ marginTop:12, display:"flex", alignItems:"center", gap:8 }}>
+                <div style={{ display:"flex" }}>
+                  {[0,1,2,3].map(j => (
+                    <div key={j} style={{ width:24, height:24, borderRadius:"50%",
+                      background:s.color+"33", border:`2px solid ${T.surface}`,
+                      marginLeft:j===0 ? 0 : -8 }} />
+                  ))}
+                </div>
+                <span style={{ fontSize:12, color:T.mid, fontWeight:500 }}>{s.fans} fans going</span>
+              </div>
+            </div>
+          </div>
+        </Card>
+      ))}
+    </div>
+  </div>
+);
 
-  const toggleLike = id => setPosts(ps => ps.map(p => p.id === id ? { ...p, liked: !p.liked, likes: p.liked ? p.likes - 1 : p.likes + 1 } : p));
+// ── MESSAGES ──────────────────────────────────────────────────────────────
+const convos = [
+  { init:"M", color:T.pink,   name:"Maya R.",    last:"ok i'm obsessed with that track you sent",      time:"2m",  unread:2 },
+  { init:"J", color:T.purple, name:"Jake M.",    last:"we're literally going to the same show omg",    time:"18m", unread:0 },
+  { init:"Z", color:T.coral,  name:"Zoe K.",     last:"my spotify wrapped is going to be so unhinged", time:"1h",  unread:3 },
+  { init:"L", color:T.teal,   name:"Leo P.",     last:"have you heard the new Phoebe album???",        time:"3h",  unread:0 },
+  { init:"A", color:T.green,  name:"Aria W.",    last:"coming to the 1975 show in aug?",               time:"1d",  unread:0 },
+];
 
-  const submitPost = () => {
-    if (!draft.trim()) return;
-    setPosts(ps => [{ id: Date.now(), emoji: "🎧", name: "You", handle: "@yourusername", time: "now", text: draft.trim(), nowPlaying: null, likes: 0, replies: 0, reposts: 0, liked: false, playing: false }, ...ps]);
-    setDraft("");
+const chatMessages = [
+  { from:"them", text:"hey!! saw you're going to The 1975 show 👀", time:"9:38" },
+  { from:"me",   text:"yes!! i've been listening on repeat for weeks", time:"9:39" },
+  { from:"them", text:"ok we have basically the same taste this is insane", time:"9:40" },
+  { from:"me",   text:"right?? 92% match makes sense lol", time:"9:40" },
+  { from:"them", text:"ok i'm obsessed with that track you sent", time:"9:41" },
+];
+
+const MessagesScreen = () => {
+  const [openChat, setOpenChat] = useState(null);
+  if (openChat !== null) {
+    const c = convos[openChat];
+    return (
+      <div style={{ flex:1, display:"flex", flexDirection:"column", paddingBottom:80 }}>
+        <div style={{ padding:"4px 16px 12px", display:"flex", alignItems:"center",
+          gap:12, borderBottom:`1px solid ${T.border}` }}>
+          <button onClick={() => setOpenChat(null)} style={{ border:"none", background:"none",
+            fontSize:22, cursor:"pointer", color:c.color }}>‹</button>
+          <Avatar size={36} initials={c.init} color={c.color} />
+          <div>
+            <div style={{ fontSize:14, fontWeight:700, color:T.dark }}>{c.name}</div>
+            <div style={{ fontSize:11, color:T.teal }}>● online</div>
+          </div>
+          <Pill color={c.color} soft small style={{ marginLeft:"auto" }}>92% match</Pill>
+        </div>
+        <div style={{ flex:1, overflowY:"auto", padding:"16px 16px 0",
+          display:"flex", flexDirection:"column", gap:10 }}>
+          {chatMessages.map((m,i) => (
+            <div key={i} style={{ display:"flex", justifyContent:m.from==="me" ? "flex-end" : "flex-start" }}>
+              <div style={{ maxWidth:"72%",
+                background:m.from==="me" ? c.color : T.surface,
+                border:m.from==="them" ? `1px solid ${T.border}` : "none",
+                color:m.from==="me" ? "#fff" : T.dark,
+                borderRadius:m.from==="me" ? "18px 18px 4px 18px" : "18px 18px 18px 4px",
+                padding:"10px 14px", fontSize:14, lineHeight:1.4 }}>
+                {m.text}
+                <div style={{ fontSize:10, color:m.from==="me" ? "rgba(255,255,255,0.6)" : T.subtle,
+                  marginTop:4, textAlign:"right" }}>{m.time}</div>
+              </div>
+            </div>
+          ))}
+          <div style={{ display:"flex", alignItems:"center", gap:4, padding:"4px 0" }}>
+            <Avatar size={24} initials={c.init} color={c.color} />
+            <div style={{ background:T.surface, border:`1px solid ${T.border}`,
+              borderRadius:12, padding:"8px 14px", display:"flex", gap:4 }}>
+              {[0,1,2].map(i => (
+                <div key={i} style={{ width:6, height:6, borderRadius:"50%",
+                  background:T.subtle, animation:`bounce 1.2s ${i*0.2}s infinite` }} />
+              ))}
+            </div>
+          </div>
+        </div>
+        <div style={{ padding:"12px 16px 0", display:"flex", gap:10, alignItems:"center" }}>
+          <div style={{ flex:1, background:T.surface, border:`1px solid ${T.border}`,
+            borderRadius:24, padding:"10px 16px", fontSize:13, color:T.subtle }}>
+            message {c.name.split(" ")[0].toLowerCase()}...
+          </div>
+          <button style={{ background:c.color, border:"none", borderRadius:"50%",
+            width:38, height:38, cursor:"pointer", fontSize:16, color:"#fff" }}>↑</button>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div style={{ flex:1, overflowY:"auto", paddingBottom:80 }}>
+      <div style={{ padding:"4px 20px 12px", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+        <span style={{ fontSize:20, fontWeight:800, color:T.dark }}>messages</span>
+        <button style={{ background:T.tealSoft, border:"none", borderRadius:12,
+          padding:"6px 12px", fontSize:13, fontWeight:700, color:T.teal, cursor:"pointer" }}>+ new</button>
+      </div>
+      <div style={{ margin:"0 16px 14px", position:"relative" }}>
+        <span style={{ position:"absolute", left:14, top:"50%", transform:"translateY(-50%)",
+          fontSize:14, color:T.subtle }}>🔍</span>
+        <input readOnly style={{ width:"100%", padding:"10px 14px 10px 36px",
+          border:`1px solid ${T.border}`, borderRadius:14, background:T.surface,
+          fontSize:14, color:T.mid, outline:"none", boxSizing:"border-box",
+          fontFamily:"inherit" }} placeholder="search conversations" />
+      </div>
+      <div style={{ height:1, background:T.border }} />
+      {convos.map((c,i) => (
+        <div key={i} onClick={() => setOpenChat(i)} style={{
+          display:"flex", alignItems:"center", gap:12, padding:"14px 16px",
+          borderBottom:`1px solid ${T.border}`, cursor:"pointer",
+          background:c.unread > 0 ? c.color+"06" : "transparent" }}>
+          <div style={{ position:"relative" }}>
+            <Avatar size={46} initials={c.init} color={c.color} />
+            {c.unread > 0 && (
+              <div style={{ position:"absolute", top:-2, right:-2,
+                background:c.color, color:"#fff", borderRadius:"50%",
+                width:18, height:18, fontSize:10, fontWeight:800,
+                display:"flex", alignItems:"center", justifyContent:"center",
+                border:`2px solid ${T.bg}` }}>{c.unread}</div>
+            )}
+          </div>
+          <div style={{ flex:1, minWidth:0 }}>
+            <div style={{ display:"flex", justifyContent:"space-between", marginBottom:3 }}>
+              <span style={{ fontSize:14, fontWeight:c.unread>0 ? 800 : 600, color:T.dark }}>{c.name}</span>
+              <span style={{ fontSize:11, color:T.subtle }}>{c.time}</span>
+            </div>
+            <div style={{ fontSize:13, color:c.unread>0 ? T.dark : T.mid,
+              fontWeight:c.unread>0 ? 600 : 400,
+              overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{c.last}</div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+// ── PROFILE ────────────────────────────────────────────────────────────────
+const topArtists = ["The 1975","Phoebe B.","Olivia R.","Oasis","Sabrina C.","Harry S.","One Direction","Sombr","Addison Rae"];
+const albumColors = [T.pink, T.purple, T.coral, T.teal];
+const coldOpens = [
+  { q:"fav artist right now?",    a:"The 1975 always"   },
+  { q:"last show you went to?",   a:"Greek Theatre 🎟"   },
+  { q:"album on repeat?",         a:"Being Funny in a Foreign Language" },
+  { q:"song for a road trip?",    a:"Give Me All Your Love" },
+];
+
+const ProfileScreen = () => (
+  <div style={{ flex:1, overflowY:"auto", paddingBottom:80 }}>
+    <div style={{ height:120,
+      background:`linear-gradient(135deg, ${T.pink}CC 0%, ${T.purple}99 50%, ${T.coral}88 100%)`,
+      position:"relative" }}>
+      <div style={{ position:"absolute", bottom:-28, left:20 }}>
+        <div style={{ width:60, height:60, borderRadius:"50%", background:T.pinkSoft,
+          border:`3px solid ${T.bg}`, display:"flex", alignItems:"center",
+          justifyContent:"center", fontSize:22, fontWeight:900, color:T.pink }}>G</div>
+      </div>
+      <Pill color={T.pink} style={{ position:"absolute", bottom:12, right:16 }}>✦ founding member</Pill>
+    </div>
+    <div style={{ padding:"36px 20px 0" }}>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:6 }}>
+        <div>
+          <div style={{ fontSize:20, fontWeight:900, color:T.dark, letterSpacing:"-0.3px" }}>Grace Turner</div>
+          <div style={{ fontSize:13, color:T.mid }}>@grxceturner</div>
+        </div>
+        <Pill color={T.pink}>99% match</Pill>
+      </div>
+      <div style={{ fontSize:12, color:T.mid, marginBottom:14 }}>♪ Greek Theatre · LA · thetastebuds.app</div>
+      <div style={{ display:"flex", gap:24, marginBottom:16 }}>
+        {[["142","following"],["389","followers"]].map(([n,l]) => (
+          <div key={l}>
+            <span style={{ fontSize:16, fontWeight:800, color:T.dark }}>{n}</span>
+            <span style={{ fontSize:12, color:T.mid, marginLeft:4 }}>{l}</span>
+          </div>
+        ))}
+      </div>
+      <div style={{ height:1, background:T.border, margin:"0 0 16px" }} />
+      <div style={{ fontSize:13, fontWeight:800, color:T.dark, marginBottom:10 }}>top artists</div>
+      <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:18 }}>
+        {topArtists.map((a,i) => (
+          <Pill key={i} color={[T.pink,T.purple,T.coral,T.teal,T.green,T.purple,T.pink,T.coral,T.teal][i]} soft small>{a}</Pill>
+        ))}
+      </div>
+      <div style={{ fontSize:13, fontWeight:800, color:T.dark, marginBottom:10 }}>top albums</div>
+      <div style={{ display:"flex", gap:10, marginBottom:18 }}>
+        {albumColors.map((c,i) => (
+          <div key={i} style={{ width:66, height:66, borderRadius:12,
+            background:`linear-gradient(135deg, ${c}DD, ${c}66)`,
+            border:`1px solid ${c}44` }} />
+        ))}
+      </div>
+      <div style={{ height:1, background:T.border, margin:"0 0 16px" }} />
+      <div style={{ fontSize:13, fontWeight:800, color:T.dark, marginBottom:10 }}>cold opens</div>
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+        {coldOpens.map((co,i) => (
+          <Card key={i} style={{ padding:12 }}>
+            <div style={{ fontSize:10, color:T.mid, marginBottom:4, lineHeight:1.3 }}>{co.q}</div>
+            <div style={{ fontSize:12, fontWeight:700, color:T.dark, lineHeight:1.3 }}>{co.a}</div>
+          </Card>
+        ))}
+      </div>
+    </div>
+  </div>
+);
+
+// ── APP SHELL ──────────────────────────────────────────────────────────────
+export default function App() {
+  // Onboarding state: null = not started, 0-4 = step, "done" = complete
+  const [onboardStep, setOnboardStep] = useState(0);
+  const [mainScreen, setMainScreen] = useState("home");
+
+  const onboardingComplete = onboardStep === "done";
+
+  const mainScreens = {
+    home:     <HomeScreen />,
+    find:     <FindFansScreen />,
+    shows:    <ShowsScreen />,
+    messages: <MessagesScreen />,
+    profile:  <ProfileScreen />,
   };
 
-  const spin = () => {
-    setSpinning(true);
-    let count = 0;
-    const iv = setInterval(() => {
-      setCurrentSong(slotSongs[Math.floor(Math.random() * slotSongs.length)]);
-      if (++count > 9) { clearInterval(iv); setSpinning(false); }
-    }, 110);
-  };
-
-  const toggleConnect = (id, e) => {
-    e.stopPropagation();
-    setConnected(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
-  };
-
-  const showTooltip = (story) => {
-    if (!story.active) return;
-    setTooltip(story);
-    setTimeout(() => setTooltip(null), 2500);
-  };
-
-  const fmt = n => n >= 1000 ? (n / 1000).toFixed(1) + "k" : n;
-
-  const toggleCheckin = (id, e) => {
-    if (e) e.stopPropagation();
-    setCheckedIn(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const renderOnboarding = () => {
+    switch (onboardStep) {
+      case 0: return <WelcomeScreen
+        onNext={() => setOnboardStep(1)}
+        onLogin={() => setOnboardStep("done")} />;
+      case 1: return <CreateAccountScreen
+        onNext={() => setOnboardStep(2)}
+        onBack={() => setOnboardStep(0)} />;
+      case 2: return <UsernameScreen
+        onNext={() => setOnboardStep(3)}
+        onBack={() => setOnboardStep(1)} />;
+      case 3: return <BirthdayScreen
+        onNext={() => setOnboardStep(4)}
+        onBack={() => setOnboardStep(2)} />;
+      case 4: return <SpotifyScreen
+        onNext={() => setOnboardStep("done")}
+        onSkip={() => setOnboardStep("done")} />;
+      default: return null;
+    }
   };
 
   return (
     <>
-      <style>{css}</style>
-      <div className={`app${darkMode ? " dark" : ""}`}>
-
-        {/* ══ HOME FEED ══ */}
-        {screen === "home" && (
-          <div className="screen">
-            <div className="feed-header">
-              <div className="feed-header-top">
-                <div className="wordmark">taste<span>buds</span></div>
-                <div className="feed-header-icons">
-                  <button className="icon-btn" onClick={() => setSlotOpen(true)}>🎰</button>
-                  <button className="icon-btn">✉</button>
-                </div>
-              </div>
-              <div className="feed-tabs">
-                {["trending", "following"].map(t => (
-                  <button key={t} className={`feed-tab ${feedTab === t ? "active" : ""}`} onClick={() => setFeedTab(t)}>
-                    {t === "trending" ? "Trending" : "Following"}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* ── NOW PLAYING STORIES — above compose ── */}
-            <div className="now-playing-row">
-              {NOW_PLAYING_STORIES.map(story => (
-                <div className="np-story" key={story.id} onClick={() => showTooltip(story)}>
-                  <div className="np-ring-wrap">
-                    <div className={`np-ring ${story.active ? "active" : "inactive"}`}>
-                      <div className="np-avatar-inner">{story.emoji}</div>
-                    </div>
-                    {story.active && <div className="np-badge">♫</div>}
-                  </div>
-                  <div className="np-name">{story.name}</div>
-                  <div className="np-song">{story.active ? story.song : "—"}</div>
-                </div>
-              ))}
-            </div>
-
-            {/* ── COMPOSE ── */}
-            <div className="compose-bar">
-              <div className="compose-avatar">🎧</div>
-              <div className="compose-right">
-                <textarea className="compose-input" rows={2} placeholder="What are you listening to?" value={draft} onChange={e => setDraft(e.target.value)} />
-                <div className="compose-actions">
-                  <button className="compose-post-btn" onClick={submitPost}>Post</button>
-                </div>
-              </div>
-            </div>
-
-            <div className="divider" />
-
-            {/* Posts */}
-            {posts.map(post => (
-              <div className="post" key={post.id}>
-                <div className={`post-avatar-wrap ${post.playing ? "playing" : ""}`}>
-                  <div className="post-avatar">{post.emoji}</div>
-                  {post.playing && <div className="post-avatar-np">♫</div>}
-                </div>
-                <div className="post-body">
-                  <div className="post-meta">
-                    <span className="post-name">{post.name}</span>
-                    <span className="post-handle">{post.handle}</span>
-                    <span className="post-time">{post.time}</span>
-                  </div>
-                  <div className="post-text">{post.text}</div>
-                  {post.nowPlaying && (
-                    <div className="now-playing-pill">
-                      <span className="pill-art">{post.nowPlaying.emoji}</span>
-                      <div className="pill-text">
-                        <div className="pill-song">{post.nowPlaying.song}</div>
-                        <div className="pill-artist">{post.nowPlaying.artist}</div>
-                      </div>
-                      <span className="pill-wave">♫</span>
-                    </div>
-                  )}
-                  <div className="post-actions">
-                    <button className="action-btn"><span className="action-icon">💬</span>{fmt(post.replies)}</button>
-                    <button className="action-btn"><span className="action-icon">🔁</span>{fmt(post.reposts)}</button>
-                    <button className={`action-btn ${post.liked ? "liked" : ""}`} onClick={() => toggleLike(post.id)}>
-                      <span className="action-icon">{post.liked ? "♥" : "♡"}</span>{fmt(post.likes)}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* ══ FIND FANS ══ */}
-        {screen === "fans" && (
-          <div className="screen">
-            <div className="fans-header">
-              <div className="fans-title">Find Fans</div>
-              <div className="header-icons">
-                <button className="icon-btn">✉</button>
-                <button className="icon-btn">⚙</button>
-              </div>
-            </div>
-            <button className="find-btn">♪ &nbsp;Match by Listening Taste</button>
-            <div className="fans-grid">
-              {fans.map(fan => (
-                <div className="fan-card" key={fan.id} onClick={() => { setSelectedFan(fan); setScreen("profile"); }}>
-                  <div className={`fan-photo ${fan.playing ? "np-active" : ""}`}>
-                    {fan.emoji}
-                    {fan.playing && <div className="fan-np-badge">♫ live</div>}
-                    <div className={`fan-add ${connected.has(fan.id) ? "connected" : ""}`} onClick={e => toggleConnect(fan.id, e)}>
-                      {connected.has(fan.id) ? "✓" : "+"}
-                    </div>
-                  </div>
-                  <div className="fan-name">{fan.name}</div>
-                  <div className="fan-handle">{fan.handle}</div>
-                  <div className="fan-tags">{fan.tags.map((t, i) => <span className="fan-tag" key={i}>{t}</span>)}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* ══ PROFILE ══ */}
-        {screen === "profile" && selectedFan && (
-          <div className="screen">
-            <div className="profile-header">
-              <button className="back-btn" onClick={() => setScreen("fans")}>←</button>
-              <div className="header-icons">
-                <button className="icon-btn">✉</button>
-                <button className="icon-btn">⚙</button>
-              </div>
-            </div>
-            <div className="profile-banner">Cover Photo</div>
-            <div className="profile-avatar-row">
-              <div className="p-avatar" style={selectedFan.playing ? { outline: "3px solid var(--ink2)", outlineOffset: "3px" } : {}}>
-                {selectedFan.emoji}
-              </div>
-              <button className="p-follow-btn">{connected.has(selectedFan.id) ? "Following ✓" : "+ Follow"}</button>
-            </div>
-            {selectedFan.playing && (
-              <div style={{ margin: "10px 22px 0", display: "flex", alignItems: "center", gap: 8, background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 10, padding: "8px 12px" }}>
-                <span style={{ fontSize: 14, color: "var(--ink2)", animation: "pulse 1.2s infinite" }}>♫</span>
-                <span style={{ fontSize: 12, color: "var(--ink2)" }}>Now playing <strong style={{ color: "var(--ink)" }}>{selectedFan.nowSong}</strong></span>
-              </div>
-            )}
-            <div className="profile-info">
-              <div className="pname">{selectedFan.name}, 24</div>
-              <div className="phandle">{selectedFan.handle}</div>
-              <div className="pbio">{selectedFan.bio}</div>
-              <div className="pmeta">
-                <span>📍 Los Angeles</span>
-                <span>🎵 Spotify</span>
-                <span>🏟 The Fonda</span>
-              </div>
-              <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                <div className="p-socials">
-                  <div className="p-social">📸</div>
-                  <div className="p-social">𝕏</div>
-                </div>
-              </div>
-            </div>
-            <div className="p-stats">
-              <div className="p-stat"><strong>248</strong>Following</div>
-              <div className="p-stat"><strong>1.4k</strong>Followers</div>
-              <div className="p-stat" style={{ marginLeft: "auto", color: "var(--ink2)", fontWeight: 600, fontSize: 12 }}>{selectedFan.compat}% match ♫</div>
-            </div>
-            <div className="section-label">Top Albums</div>
-            <div className="h-scroll">
-              {selectedFan.topAlbums.map((a, i) => (
-                <div className="album-card" key={i}>
-                  <div className="album-art" style={{ background: a.bg }}>{a.emoji}</div>
-                  <div className="album-title">{a.title}</div>
-                  <div className="album-artist">{a.artist}</div>
-                </div>
-              ))}
-            </div>
-            <div className="cold-opens">
-              <div className="co-label">Cold Opens</div>
-              <div className="co-grid">
-                {[["Album that's your whole personality?", selectedFan.cold[0]], ["Top album in 2014?", selectedFan.cold[1]], ["Favorite music era?", selectedFan.cold[2]], ["Worst music phase...", selectedFan.cold[3]]].map(([q, a], i) => (
-                  <div className="co-card" key={i}><div className="co-q">{q}</div><div className="co-a">{a}</div></div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ══ MY PROFILE ══ */}
-        {screen === "myprofile" && (
-          <div className="screen">
-            <div className="profile-header">
-              <div style={{ width: 34 }} />
-              <div className="header-icons">
-                <button className="icon-btn">✉</button>
-                <button className="icon-btn" onClick={() => setScreen("settings")}>⚙</button>
-              </div>
-            </div>
-            <div className="profile-banner">Cover Photo</div>
-            <div className="profile-avatar-row">
-              <div className="p-avatar">🎧</div>
-              <button className="p-follow-btn">Edit Profile</button>
-            </div>
-            <div className="profile-info">
-              <div className="pname">Your Name, 22</div>
-              <div className="phandle">@yourusername</div>
-              <div className="pbio">Your bio — what does music mean to you?</div>
-              <div className="pmeta"><span>📍 Los Angeles</span><span>🎵 Spotify</span><span>🏟 Set home venue</span></div>
-            </div>
-            <div className="p-stats">
-              <div className="p-stat"><strong>0</strong>Following</div>
-              <div className="p-stat"><strong>0</strong>Followers</div>
-            </div>
-            <div className="section-label">Top Albums</div>
-            <div className="h-scroll">
-              <div className="album-card" style={{ opacity: 0.6 }}>
-                <div className="album-art" style={{ background: "var(--bg3)", border: "1.5px dashed var(--border)" }}>＋</div>
-                <div className="album-title">Connect Spotify</div>
-                <div className="album-artist">to populate</div>
-              </div>
-            </div>
-            <div className="cold-opens">
-              <div className="co-label">Cold Opens</div>
-              <div className="co-grid">
-                {["Album that's your whole personality?", "Top album in 2014?", "Favorite music era?", "Worst music phase..."].map((q, i) => (
-                  <div className="co-card" key={i} style={{ cursor: "pointer", borderStyle: "dashed" }}>
-                    <div className="co-q">{q}</div>
-                    <div className="co-a" style={{ color: "var(--ink3)", fontSize: 12 }}>Tap to answer →</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ══ SHOWS ══ */}
-        {screen === "shows" && (
-          <div className="screen">
-            <div className="shows-header">
-              <div>
-                <div className="shows-title">Shows</div>
-                <div className="shows-sub">Find fans at upcoming concerts</div>
-              </div>
-              <button className="icon-btn">⚙</button>
-            </div>
-
-            <div className="checkin-banner" onClick={() => {}}>
-              <span className="checkin-icon">📍</span>
-              <div className="checkin-text">
-                <h4>Check in to a show</h4>
-                <p>Let fans at the same event find you</p>
-              </div>
-              <span className="checkin-arrow">→</span>
-            </div>
-
-            <div className="shows-section-label">Near You · Los Angeles</div>
-
-            {SHOWS.map(show => {
-              const isIn = checkedIn.has(show.id);
-              const displayCount = show.going + (isIn ? 1 : 0);
-              return (
-                <div className={`show-card ${isIn ? "checked-in" : ""}`} key={show.id} onClick={() => setSelectedShow(show)}>
-                  <div className="show-card-top">
-                    <div className="show-emoji">{show.emoji}</div>
-                    <div className="show-info">
-                      <div className="show-artist">{show.artist}</div>
-                      <div className="show-venue">{show.venue}</div>
-                      <div className="show-date">{show.date}</div>
-                    </div>
-                    <button
-                      className={`show-checkin-btn ${isIn ? "active" : ""}`}
-                      onClick={e => toggleCheckin(show.id, e)}
-                    >
-                      {isIn ? "✓ Going" : "I'm Going"}
-                    </button>
-                  </div>
-                  <div className="show-card-bottom">
-                    <div className="show-attendees">
-                      <div className="attendee-faces">
-                        {show.attendees.slice(0, 4).map((a, i) => (
-                          <div className="attendee-face" key={i}>{a.emoji}</div>
-                        ))}
-                        {isIn && <div className="attendee-face">🎧</div>}
-                      </div>
-                      <div className="attendee-count">
-                        <strong>{displayCount} fan{displayCount !== 1 ? "s" : ""}</strong> going
-                      </div>
-                    </div>
-                    <div className="show-see-all">See all →</div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
-        {/* ══ SETTINGS ══ */}
-        {/* Settings and related functionality authored by Ethan Buttram 5/26/2026*/}
-        {screen === "settings" && (
-          <div className="screen">
-            <div className="settings-header">
-              <button className="back-btn" onClick={() => setScreen("myprofile")}>←</button>
-              <div className="settings-title">Settings</div>
-            </div>
-
-            <div className="settings-section-label">Appearance</div>
-
-            <div className="settings-row">
-              <div className="settings-row-left">
-                <div className="settings-icon-label">{darkMode ? "🌙" : "☀️"}</div>
-                <div className="settings-row-label">Dark Mode</div>
-                <div className="settings-row-sub">{darkMode ? "Switch to light mode" : "Switch to dark mode"}</div>
-              </div>
-              <label className="toggle-wrap">
-                <input type="checkbox" checked={darkMode} onChange={() => setDarkMode(d => !d)} />
-                <span className="toggle-track" />
-              </label>
-            </div>
-
-            <div className="settings-section-label">Legal</div>
-
-            <div className="settings-row tappable" onClick={() => setScreen("privacy")}>
-              <div className="settings-row-left">
-                <div className="settings-icon-label">🔒</div>
-                <div className="settings-row-label">Privacy Policy</div>
-                <div className="settings-row-sub">How we collect and use your data</div>
-              </div>
-              <span className="settings-row-chevron">›</span>
-            </div>
-          </div>
-        )}
-
-        {/* ══ PRIVACY POLICY ══ */}
-        {/* Privacy Policy screen authored by Ethan Buttram 5/26/2026 */}
-        {screen === "privacy" && (
-          <div className="screen">
-            <div className="privacy-header">
-              <button className="back-btn" onClick={() => setScreen("settings")}>←</button>
-              <div className="privacy-title">Privacy Policy</div>
-            </div>
-            <div className="privacy-body" dangerouslySetInnerHTML={{ __html: PRIVACY_HTML }} />
-          </div>
-        )}
-
-        {/* NAV */}
-        <nav className="bottom-nav">
-          <button className={`nav-btn ${screen === "home" ? "active" : ""}`} onClick={() => setScreen("home")}>
-            <span className="nav-icon">⌂</span><span>Home</span>
-          </button>
-          <button className={`nav-btn ${screen === "fans" || screen === "profile" ? "active" : ""}`} onClick={() => setScreen("fans")}>
-            <span className="nav-icon">◎</span><span>Find Fans</span>
-          </button>
-          <button className={`nav-btn ${screen === "shows" ? "active" : ""}`} onClick={() => setScreen("shows")}>
-            <span className="nav-icon">🎟</span><span>Shows</span>
-          </button>
-          <button className={`nav-btn ${screen === "myprofile" || screen === "settings" || screen === "privacy" ? "active" : ""}`} onClick={() => setScreen("myprofile")}>
-            <span className="nav-icon">◉</span><span>Profile</span>
-          </button>
-        </nav>
-
-        {/* SHOW DETAIL MODAL */}
-        {selectedShow && (
-          <div className="show-modal-overlay" onClick={() => setSelectedShow(null)}>
-            <div className="show-modal" onClick={e => e.stopPropagation()}>
-              <div className="show-modal-handle" />
-              <div className="show-modal-header">
-                <div className="show-modal-emoji">{selectedShow.emoji}</div>
-                <div className="show-modal-info">
-                  <div className="show-modal-artist">{selectedShow.artist}</div>
-                  <div className="show-modal-meta">
-                    {selectedShow.venue}<br />
-                    {selectedShow.date}
-                  </div>
-                </div>
-              </div>
-              <button
-                className={`show-modal-checkin ${checkedIn.has(selectedShow.id) ? "checked" : ""}`}
-                onClick={() => toggleCheckin(selectedShow.id, null)}
-              >
-                {checkedIn.has(selectedShow.id) ? "✓  You're checked in" : "📍  Check In — I'm Going"}
-              </button>
-              <div className="show-modal-attendees-label">
-                {selectedShow.going + (checkedIn.has(selectedShow.id) ? 1 : 0)} fans going
-              </div>
-              {checkedIn.has(selectedShow.id) && (
-                <div className="attendee-row">
-                  <div className="att-avatar">🎧</div>
-                  <div className="att-info">
-                    <div className="att-name">You</div>
-                    <div className="att-handle">@yourusername</div>
-                  </div>
-                  <div className="att-compat">You!</div>
-                </div>
-              )}
-              {selectedShow.attendees.map((att, i) => (
-                <div className="attendee-row" key={i} onClick={() => { const f = fans.find(f => f.id === att.id); if (f) { setSelectedFan(f); setSelectedShow(null); setScreen("profile"); } }}>
-                  <div className="att-avatar">{att.emoji}</div>
-                  <div className="att-info">
-                    <div className="att-name">{att.name}</div>
-                    <div className="att-handle">{att.handle}</div>
-                  </div>
-                  <div className="att-compat">{att.compat}% match</div>
-                  <div
-                    className={`att-connect ${connected.has(att.id) ? "connected" : ""}`}
-                    onClick={e => { e.stopPropagation(); toggleConnect(att.id, e); }}
-                  >
-                    {connected.has(att.id) ? "✓" : "+"}
-                  </div>
-                </div>
-              ))}
-              <button className="show-modal-close" onClick={() => setSelectedShow(null)}>Close</button>
-            </div>
-          </div>
-        )}
-
-        {/* SLOT MODAL */}
-        {slotOpen && (
-          <div className="modal-overlay" onClick={() => setSlotOpen(false)}>
-            <div className="modal" onClick={e => e.stopPropagation()}>
-              <div className="modal-handle" />
-              <h2>Today's Spin</h2>
-              <div className="modal-sub">Let the universe decide</div>
-              <div className="slot-display">
-                <span className={`slot-art ${spinning ? "anim" : ""}`}>{currentSong.emoji}</span>
-                <div className={`slot-title ${spinning ? "anim" : ""}`}>{currentSong.title}</div>
-                <div className="slot-artist">{currentSong.artist}</div>
-              </div>
-              <button className="spin-btn" onClick={spin} disabled={spinning}>{spinning ? "Spinning..." : "↺  Spin Again"}</button>
-              <button className="modal-close" onClick={() => setSlotOpen(false)}>Dismiss</button>
-            </div>
-          </div>
-        )}
-
-        {/* NOW PLAYING TOOLTIP */}
-        {tooltip && (
-          <div className="np-tooltip">
-            <strong>{tooltip.name}</strong><span>·</span>{tooltip.song} — {tooltip.artist}
-          </div>
-        )}
-
+      <style>{`
+        * { box-sizing:border-box; margin:0; padding:0; -webkit-font-smoothing:antialiased; }
+        body { background:#2a2320; display:flex; justify-content:center; align-items:center;
+          min-height:100vh; font-family:-apple-system,'SF Pro Text','Inter',sans-serif; }
+        @keyframes bounce { 0%,60%,100%{transform:translateY(0);opacity:0.4} 28%{transform:translateY(-5px);opacity:1} }
+        ::-webkit-scrollbar { display:none; }
+        input { font-family:inherit; }
+        button { font-family:inherit; }
+      `}</style>
+      <div style={{ width:390, height:844, background:T.bg, borderRadius:48, overflow:"hidden",
+        boxShadow:"0 32px 80px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.08)",
+        display:"flex", flexDirection:"column", position:"relative" }}>
+        <StatusBar />
+        <div style={{ flex:1, overflow:"hidden", display:"flex", flexDirection:"column" }}>
+          {onboardingComplete ? (
+            <>
+              {mainScreens[mainScreen]}
+              <TabBar active={mainScreen} setScreen={setMainScreen} />
+            </>
+          ) : (
+            renderOnboarding()
+          )}
+        </div>
       </div>
     </>
   );
