@@ -1,4 +1,14 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import {
+  redirectToSpotifyLogin,
+  getSpotifyAuthCode,
+  getSpotifyAuthError,
+  clearSpotifyAuthParamsFromUrl,
+  exchangeCodeForToken,
+  getStoredSpotifyToken,
+  fetchSpotifyProfile,
+  fetchSpotifyTopArtists,
+} from "./spotifyAuth.js";
 
 // ── Design tokens ──────────────────────────────────────────────────────────
 const T = {
@@ -101,7 +111,7 @@ const BigButton = ({ children, onClick, color = T.pink, outline = false, style =
 );
 
 // ── SCREEN 1: Welcome ──────────────────────────────────────────────────────
-const WelcomeScreen = ({ onNext, onLogin }) => (
+const WelcomeScreen = ({ onNext, onLogin, onSpotifyLogin }) => (
   <div style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center",
     justifyContent:"center", padding:"0 28px 40px", gap:0 }}>
     {/* Logo */}
@@ -135,7 +145,7 @@ const WelcomeScreen = ({ onNext, onLogin }) => (
       <div style={{ flex:1, height:1, background:T.border }} />
     </div>
 
-    <button style={{ width:"100%", padding:15, borderRadius:14,
+    <button onClick={onSpotifyLogin} style={{ width:"100%", padding:15, borderRadius:14,
       background:T.spotify, border:"none", color:"#fff",
       fontSize:15, fontWeight:700, cursor:"pointer",
       display:"flex", alignItems:"center", justifyContent:"center", gap:10 }}>
@@ -299,7 +309,7 @@ const BirthdayScreen = ({ onNext, onBack }) => (
 );
 
 // ── SCREEN 5: Connect Spotify ──────────────────────────────────────────────
-const SpotifyScreen = ({ onNext, onSkip }) => (
+const SpotifyScreen = ({ onConnect, onSkip, error }) => (
   <div style={{ flex:1, display:"flex", flexDirection:"column", padding:"0 28px" }}>
     <ProgressBar step={4} total={4} />
     <div style={{ flex:1, display:"flex", flexDirection:"column",
@@ -335,7 +345,14 @@ const SpotifyScreen = ({ onNext, onSkip }) => (
         ))}
       </div>
 
-      <button onClick={onNext} style={{ width:"100%", padding:15, borderRadius:14,
+      {error && (
+        <div style={{ width:"100%", padding:"10px 14px", borderRadius:12,
+          background:T.coralSoft, color:T.coral, fontSize:12.5, lineHeight:1.5,
+          marginBottom:14 }}>
+          couldn't connect to Spotify: {error}
+        </div>
+      )}
+      <button onClick={onConnect} style={{ width:"100%", padding:15, borderRadius:14,
         background:T.spotify, border:"none", color:"#fff",
         fontSize:16, fontWeight:700, cursor:"pointer",
         display:"flex", alignItems:"center", justifyContent:"center",
@@ -703,7 +720,16 @@ const coldOpens = [
   { q:"song for a road trip?",    a:"Give Me All Your Love" },
 ];
 
-const ProfileScreen = () => (
+const ProfileScreen = ({ spotifyProfile, spotifyTopArtists }) => {
+  const displayName = spotifyProfile?.display_name || "Grace Turner";
+  const handle = spotifyProfile?.id ? `@${spotifyProfile.id}` : "@grxceturner";
+  const initial = displayName.charAt(0).toUpperCase();
+  const avatarUrl = spotifyProfile?.images?.[0]?.url || null;
+  const artistNames = spotifyTopArtists?.length
+    ? spotifyTopArtists.map(a => a.name)
+    : topArtists;
+
+  return (
   <div style={{ flex:1, overflowY:"auto", paddingBottom:80 }}>
     <div style={{ height:120,
       background:`linear-gradient(135deg, ${T.pink}CC 0%, ${T.purple}99 50%, ${T.coral}88 100%)`,
@@ -711,15 +737,21 @@ const ProfileScreen = () => (
       <div style={{ position:"absolute", bottom:-28, left:20 }}>
         <div style={{ width:60, height:60, borderRadius:"50%", background:T.pinkSoft,
           border:`3px solid ${T.bg}`, display:"flex", alignItems:"center",
-          justifyContent:"center", fontSize:22, fontWeight:900, color:T.pink }}>G</div>
+          justifyContent:"center", fontSize:22, fontWeight:900, color:T.pink,
+          overflow:"hidden", backgroundImage: avatarUrl ? `url(${avatarUrl})` : "none",
+          backgroundSize:"cover", backgroundPosition:"center" }}>
+          {!avatarUrl && initial}
+        </div>
       </div>
-      <Pill color={T.pink} style={{ position:"absolute", bottom:12, right:16 }}>✦ founding member</Pill>
+      <Pill color={T.pink} style={{ position:"absolute", bottom:12, right:16 }}>
+        {spotifyProfile ? "♪ spotify connected" : "✦ founding member"}
+      </Pill>
     </div>
     <div style={{ padding:"36px 20px 0" }}>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:6 }}>
         <div>
-          <div style={{ fontSize:20, fontWeight:900, color:T.dark, letterSpacing:"-0.3px" }}>Grace Turner</div>
-          <div style={{ fontSize:13, color:T.mid }}>@grxceturner</div>
+          <div style={{ fontSize:20, fontWeight:900, color:T.dark, letterSpacing:"-0.3px" }}>{displayName}</div>
+          <div style={{ fontSize:13, color:T.mid }}>{handle}</div>
         </div>
         <Pill color={T.pink}>99% match</Pill>
       </div>
@@ -735,7 +767,7 @@ const ProfileScreen = () => (
       <div style={{ height:1, background:T.border, margin:"0 0 16px" }} />
       <div style={{ fontSize:13, fontWeight:800, color:T.dark, marginBottom:10 }}>top artists</div>
       <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:18 }}>
-        {topArtists.map((a,i) => (
+        {artistNames.map((a,i) => (
           <Pill key={i} color={[T.pink,T.purple,T.coral,T.teal,T.green,T.purple,T.pink,T.coral,T.teal][i]} soft small>{a}</Pill>
         ))}
       </div>
@@ -759,6 +791,26 @@ const ProfileScreen = () => (
       </div>
     </div>
   </div>
+  );
+};
+
+// ── Spotify: connecting overlay ─────────────────────────────────────────────
+const SpotifyConnectingScreen = () => (
+  <div style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center",
+    justifyContent:"center", gap:18, padding:"0 28px" }}>
+    <div style={{ width:72, height:72, borderRadius:"50%", background:T.spotify,
+      display:"flex", alignItems:"center", justifyContent:"center", fontSize:32,
+      boxShadow:`0 12px 40px ${T.spotify}44` }}>♪</div>
+    <div style={{ display:"flex", gap:6 }}>
+      {[0,1,2].map(i => (
+        <div key={i} style={{ width:8, height:8, borderRadius:"50%", background:T.spotify,
+          animation:"bounce 1.2s infinite", animationDelay:`${i*0.15}s` }} />
+      ))}
+    </div>
+    <div style={{ fontSize:15, color:T.mid, fontWeight:600, textAlign:"center" }}>
+      connecting your Spotify…
+    </div>
+  </div>
 );
 
 // ── APP SHELL ──────────────────────────────────────────────────────────────
@@ -767,21 +819,89 @@ export default function App() {
   const [onboardStep, setOnboardStep] = useState(0);
   const [mainScreen, setMainScreen] = useState("home");
 
+  // Spotify login state
+  const [spotifyStatus, setSpotifyStatus] = useState("idle"); // idle | connecting | connected | error
+  const [spotifyError, setSpotifyError] = useState(null);
+  const [spotifyProfile, setSpotifyProfile] = useState(null);
+  const [spotifyTopArtists, setSpotifyTopArtists] = useState([]);
+
   const onboardingComplete = onboardStep === "done";
+
+  const loadSpotifyData = async (accessToken) => {
+    try {
+      const [profile, artists] = await Promise.all([
+        fetchSpotifyProfile(accessToken),
+        fetchSpotifyTopArtists(accessToken),
+      ]);
+      setSpotifyProfile(profile);
+      setSpotifyTopArtists(artists);
+      setSpotifyStatus("connected");
+      setOnboardStep("done");
+    } catch (err) {
+      console.error(err);
+      setSpotifyError(err.message);
+      setSpotifyStatus("error");
+    }
+  };
+
+  // Handles the redirect back from Spotify (?code=...) and picks up an
+  // already-valid session on refresh.
+  useEffect(() => {
+    const handleSpotifyRedirect = async () => {
+      const authError = getSpotifyAuthError();
+      if (authError) {
+        clearSpotifyAuthParamsFromUrl();
+        setSpotifyError(authError === "access_denied" ? "access was denied" : authError);
+        setSpotifyStatus("error");
+        return;
+      }
+
+      const code = getSpotifyAuthCode();
+      if (code) {
+        setSpotifyStatus("connecting");
+        clearSpotifyAuthParamsFromUrl();
+        try {
+          const token = await exchangeCodeForToken(code);
+          await loadSpotifyData(token.access_token);
+        } catch (err) {
+          console.error(err);
+          setSpotifyError(err.message);
+          setSpotifyStatus("error");
+        }
+        return;
+      }
+
+      const existingToken = getStoredSpotifyToken();
+      if (existingToken) {
+        setSpotifyStatus("connecting");
+        await loadSpotifyData(existingToken.access_token);
+      }
+    };
+
+    handleSpotifyRedirect();
+  }, []);
+
+  const handleSpotifyLogin = () => {
+    setSpotifyError(null);
+    redirectToSpotifyLogin();
+  };
 
   const mainScreens = {
     home:     <HomeScreen />,
     find:     <FindFansScreen />,
     shows:    <ShowsScreen />,
     messages: <MessagesScreen />,
-    profile:  <ProfileScreen />,
+    profile:  <ProfileScreen spotifyProfile={spotifyProfile} spotifyTopArtists={spotifyTopArtists} />,
   };
 
   const renderOnboarding = () => {
+    if (spotifyStatus === "connecting") return <SpotifyConnectingScreen />;
+
     switch (onboardStep) {
       case 0: return <WelcomeScreen
         onNext={() => setOnboardStep(1)}
-        onLogin={() => setOnboardStep("done")} />;
+        onLogin={() => setOnboardStep("done")}
+        onSpotifyLogin={handleSpotifyLogin} />;
       case 1: return <CreateAccountScreen
         onNext={() => setOnboardStep(2)}
         onBack={() => setOnboardStep(0)} />;
@@ -792,8 +912,9 @@ export default function App() {
         onNext={() => setOnboardStep(4)}
         onBack={() => setOnboardStep(2)} />;
       case 4: return <SpotifyScreen
-        onNext={() => setOnboardStep("done")}
-        onSkip={() => setOnboardStep("done")} />;
+        onConnect={handleSpotifyLogin}
+        onSkip={() => setOnboardStep("done")}
+        error={spotifyStatus === "error" ? spotifyError : null} />;
       default: return null;
     }
   };
