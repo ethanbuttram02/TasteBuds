@@ -10,7 +10,7 @@ import {
   fetchSpotifyTopArtists,
   fetchSpotifyTopAlbums,
 } from "./spotifyAuth.js";
- 
+
 // ── Design tokens ──────────────────────────────────────────────────────────
 const T = {
   bg:        "#f0f0f0",
@@ -31,7 +31,7 @@ const T = {
   greenSoft: "#E6F8EE",
   spotify:   "#1DB954",
 };
- 
+
 // ── Shared UI primitives ───────────────────────────────────────────────────
 const Avatar = ({ size = 40, initials = "?", color = T.pink }) => (
   <div style={{
@@ -41,7 +41,7 @@ const Avatar = ({ size = 40, initials = "?", color = T.pink }) => (
     flexShrink: 0, fontSize: size * 0.36, fontWeight: 700, color,
   }}>{initials}</div>
 );
- 
+
 const Pill = ({ children, color = T.pink, soft = false, small = false }) => (
   <span style={{
     display: "inline-flex", alignItems: "center", gap: 4,
@@ -52,14 +52,14 @@ const Pill = ({ children, color = T.pink, soft = false, small = false }) => (
     fontSize: small ? 10 : 11, fontWeight: 700, letterSpacing: "0.02em", lineHeight: 1,
   }}>{children}</span>
 );
- 
+
 const Card = ({ children, style = {}, onClick }) => (
   <div onClick={onClick} style={{
     background: T.surface, borderRadius: 18, border: `1px solid ${T.border}`,
     overflow: "hidden", cursor: onClick ? "pointer" : "default", ...style,
   }}>{children}</div>
 );
- 
+
 const StatusBar = () => (
   <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center",
     padding:"14px 22px 6px", fontSize:13, fontWeight:700, color:T.dark }}>
@@ -69,7 +69,7 @@ const StatusBar = () => (
     </div>
   </div>
 );
- 
+
 // ── ONBOARDING: Progress bar ───────────────────────────────────────────────
 const ProgressBar = ({ step, total }) => (
   <div style={{ padding:"6px 24px 0" }}>
@@ -79,12 +79,12 @@ const ProgressBar = ({ step, total }) => (
     </div>
   </div>
 );
- 
+
 const BackBtn = ({ onBack }) => (
   <button onClick={onBack} style={{ border:"none", background:"none", cursor:"pointer",
     fontSize:26, color:T.dark, padding:"16px 0 8px", display:"block", lineHeight:1 }}>‹</button>
 );
- 
+
 const InputField = ({ icon, placeholder, value, type = "text", focused = false }) => (
   <div style={{
     display:"flex", alignItems:"center", gap:10,
@@ -99,7 +99,7 @@ const InputField = ({ icon, placeholder, value, type = "text", focused = false }
     </span>
   </div>
 );
- 
+
 const BigButton = ({ children, onClick, color = T.pink, outline = false, style = {} }) => (
   <button onClick={onClick} style={{
     width:"100%", padding:"15px", borderRadius:14,
@@ -110,7 +110,7 @@ const BigButton = ({ children, onClick, color = T.pink, outline = false, style =
     letterSpacing:"0.02em", ...style,
   }}>{children}</button>
 );
- 
+
 // ── SCREEN 1: Welcome ──────────────────────────────────────────────────────
 const WelcomeScreen = ({ onNext, onLogin, onSpotifyLogin }) => (
   <div style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center",
@@ -127,7 +127,7 @@ const WelcomeScreen = ({ onNext, onLogin, onSpotifyLogin }) => (
         taste<span style={{ color:T.pink }}>buds</span>
       </div>
     </div>
- 
+
     <div style={{ fontSize:26, fontWeight:800, color:T.dark, textAlign:"center",
       lineHeight:1.2, marginBottom:10, letterSpacing:"-0.3px" }}>
       find your people<br/>through music
@@ -136,16 +136,16 @@ const WelcomeScreen = ({ onNext, onLogin, onSpotifyLogin }) => (
       marginBottom:40, maxWidth:280 }}>
       connect with fans who actually share your taste — not just your genre.
     </div>
- 
+
     <BigButton onClick={onNext} style={{ marginBottom:12 }}>Create an account</BigButton>
     <BigButton onClick={onLogin} outline style={{ marginBottom:16 }}>Log in</BigButton>
- 
+
     <div style={{ display:"flex", alignItems:"center", gap:12, width:"100%", margin:"4px 0 16px" }}>
       <div style={{ flex:1, height:1, background:T.border }} />
       <span style={{ fontSize:13, color:T.subtle, fontWeight:500 }}>or</span>
       <div style={{ flex:1, height:1, background:T.border }} />
     </div>
- 
+
     <button onClick={onSpotifyLogin} style={{ width:"100%", padding:15, borderRadius:14,
       background:T.spotify, border:"none", color:"#fff",
       fontSize:15, fontWeight:700, cursor:"pointer",
@@ -154,7 +154,7 @@ const WelcomeScreen = ({ onNext, onLogin, onSpotifyLogin }) => (
     </button>
   </div>
 );
- 
+
 // ── SCREEN 2: Create Account (Email) ──────────────────────────────────────
 const CreateAccountScreen = ({ onNext, onBack }) => (
   <div style={{ flex:1, display:"flex", flexDirection:"column", padding:"0 28px" }}>
@@ -167,7 +167,7 @@ const CreateAccountScreen = ({ onNext, onBack }) => (
       </div>
       <div style={{ fontSize:14, color:T.mid }}>start with your email and a password.</div>
     </div>
- 
+
     <div style={{ marginBottom:18 }}>
       <div style={{ fontSize:11, fontWeight:700, color:T.mid, letterSpacing:"0.1em",
         textTransform:"uppercase", marginBottom:7 }}>Email</div>
@@ -186,7 +186,7 @@ const CreateAccountScreen = ({ onNext, onBack }) => (
         textTransform:"uppercase", marginBottom:7 }}>Confirm Password</div>
       <InputField icon="🔒" placeholder="confirm your password" type="password" />
     </div>
- 
+
     <div style={{ marginTop:"auto", paddingBottom:40 }}>
       <BigButton onClick={onNext} style={{ marginBottom:14 }}>Continue</BigButton>
       <div style={{ fontSize:12, color:T.subtle, textAlign:"center", lineHeight:1.6 }}>
@@ -198,7 +198,7 @@ const CreateAccountScreen = ({ onNext, onBack }) => (
     </div>
   </div>
 );
- 
+
 // ── SCREEN 3: Pick Username ────────────────────────────────────────────────
 const UsernameScreen = ({ onNext, onBack }) => (
   <div style={{ flex:1, display:"flex", flexDirection:"column", padding:"0 28px" }}>
@@ -211,7 +211,7 @@ const UsernameScreen = ({ onNext, onBack }) => (
       </div>
       <div style={{ fontSize:14, color:T.mid }}>this is how other fans will find you.</div>
     </div>
- 
+
     <div style={{ marginBottom:16 }}>
       <div style={{ fontSize:11, fontWeight:700, color:T.mid, letterSpacing:"0.1em",
         textTransform:"uppercase", marginBottom:7 }}>Username</div>
@@ -231,7 +231,7 @@ const UsernameScreen = ({ onNext, onBack }) => (
         Only letters, numbers and underscores. No spaces.
       </div>
     </div>
- 
+
     <Card style={{ padding:"14px 16px", marginBottom:20 }}>
       <div style={{ fontSize:11, fontWeight:700, color:T.mid, letterSpacing:"0.1em",
         textTransform:"uppercase", marginBottom:12 }}>Your profile preview</div>
@@ -243,13 +243,13 @@ const UsernameScreen = ({ onNext, onBack }) => (
         </div>
       </div>
     </Card>
- 
+
     <div style={{ marginTop:"auto", paddingBottom:40 }}>
       <BigButton onClick={onNext}>Continue</BigButton>
     </div>
   </div>
 );
- 
+
 // ── SCREEN 4: Birthday / Age Verification ─────────────────────────────────
 const BirthdayScreen = ({ onNext, onBack }) => (
   <div style={{ flex:1, display:"flex", flexDirection:"column", padding:"0 28px" }}>
@@ -264,7 +264,7 @@ const BirthdayScreen = ({ onNext, onBack }) => (
         we use this to verify your age. you must be 13+ to use Taste Buds.
       </div>
     </div>
- 
+
     <div style={{ marginBottom:14 }}>
       <div style={{ fontSize:11, fontWeight:700, color:T.mid, letterSpacing:"0.1em",
         textTransform:"uppercase", marginBottom:10 }}>Date of birth</div>
@@ -281,14 +281,14 @@ const BirthdayScreen = ({ onNext, onBack }) => (
         ))}
       </div>
     </div>
- 
+
     <div style={{ background:T.pinkSoft, border:`1px solid ${T.pink}44`,
       borderRadius:12, padding:"12px 14px",
       display:"flex", alignItems:"center", gap:10, marginBottom:14 }}>
       <span style={{ fontSize:20 }}>✓</span>
       <span style={{ fontSize:13, color:T.pink, fontWeight:700 }}>Age verified — you're good to go!</span>
     </div>
- 
+
     <Card style={{ padding:"14px 16px" }}>
       <div style={{ display:"flex", alignItems:"flex-start", gap:10 }}>
         <span style={{ fontSize:20, marginTop:1 }}>🔒</span>
@@ -302,13 +302,13 @@ const BirthdayScreen = ({ onNext, onBack }) => (
         </div>
       </div>
     </Card>
- 
+
     <div style={{ marginTop:"auto", paddingBottom:40 }}>
       <BigButton onClick={onNext}>Continue</BigButton>
     </div>
   </div>
 );
- 
+
 // ── SCREEN 5: Connect Spotify ──────────────────────────────────────────────
 const SpotifyScreen = ({ onConnect, onSkip, error }) => (
   <div style={{ flex:1, display:"flex", flexDirection:"column", padding:"0 28px" }}>
@@ -318,14 +318,14 @@ const SpotifyScreen = ({ onConnect, onSkip, error }) => (
       <div style={{ width:110, height:110, borderRadius:"50%", background:T.spotify,
         display:"flex", alignItems:"center", justifyContent:"center", fontSize:52,
         marginBottom:24, boxShadow:`0 12px 40px ${T.spotify}44` }}>♪</div>
- 
+
       <div style={{ fontSize:26, fontWeight:800, color:T.dark, textAlign:"center",
         letterSpacing:"-0.3px", marginBottom:10 }}>connect your<br/>Spotify</div>
       <div style={{ fontSize:14, color:T.mid, textAlign:"center", lineHeight:1.65,
         marginBottom:28, maxWidth:280 }}>
         your listening data is how we match you with fans who actually get it.
       </div>
- 
+
       <div style={{ width:"100%", display:"flex", flexDirection:"column",
         gap:10, marginBottom:28 }}>
         {[
@@ -345,7 +345,7 @@ const SpotifyScreen = ({ onConnect, onSkip, error }) => (
           </Card>
         ))}
       </div>
- 
+
       {error && (
         <div style={{ width:"100%", padding:"10px 14px", borderRadius:12,
           background:T.coralSoft, color:T.coral, fontSize:12.5, lineHeight:1.5,
@@ -367,7 +367,7 @@ const SpotifyScreen = ({ onConnect, onSkip, error }) => (
     </div>
   </div>
 );
- 
+
 // ── TAB BAR ────────────────────────────────────────────────────────────────
 const TabBar = ({ active, setScreen }) => {
   const tabs = [
@@ -401,7 +401,7 @@ const TabBar = ({ active, setScreen }) => {
     </div>
   );
 };
- 
+
 // ── HOME FEED ──────────────────────────────────────────────────────────────
 const stories = [
   { init:"M", color:T.pink,   name:"maya",   song:"The 1975"     },
@@ -410,7 +410,7 @@ const stories = [
   { init:"L", color:T.teal,   name:"leo",    song:"Sabrina"      },
   { init:"A", color:T.green,  name:"aria",   song:"H.Styles"     },
 ];
- 
+
 const feedPosts = [
   { init:"M", color:T.pink,   name:"Maya R.",    handle:"@mayar",
     content:"ok The 1975 just dropped something and i cannot stop",
@@ -422,7 +422,7 @@ const feedPosts = [
     content:"monthly receipt just dropped and embarrassing as expected",
     song:"Olivia Rodrigo — vampire", tag:"🧾", match:"84%", time:"1h" },
 ];
- 
+
 const HomeScreen = () => (
   <div style={{ flex:1, overflowY:"auto", paddingBottom:80 }}>
     <div style={{ padding:"4px 20px 0", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
@@ -495,7 +495,7 @@ const HomeScreen = () => (
     ))}
   </div>
 );
- 
+
 // ── FIND FANS ──────────────────────────────────────────────────────────────
 const fans = [
   { init:"M", color:T.pink,   name:"Maya R.",    match:"92%", artists:"The 1975 · Phoebe B", live:true  },
@@ -505,7 +505,7 @@ const fans = [
   { init:"A", color:T.green,  name:"Aria W.",    match:"76%", artists:"Sombr · Addison R",    live:true  },
   { init:"S", color:T.purple, name:"Sam T.",     match:"71%", artists:"The 1975 · Oasis",     live:false },
 ];
- 
+
 const FindFansScreen = () => (
   <div style={{ flex:1, overflowY:"auto", paddingBottom:80 }}>
     <div style={{ padding:"4px 20px 12px", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
@@ -542,7 +542,7 @@ const FindFansScreen = () => (
     </div>
   </div>
 );
- 
+
 // ── SHOWS ──────────────────────────────────────────────────────────────────
 const shows = [
   { artist:"The 1975",         venue:"Kia Forum, LA",        date:"Aug 12", fans:14, color:T.pink   },
@@ -550,7 +550,7 @@ const shows = [
   { artist:"Olivia Rodrigo",   venue:"Crypto.com Arena, LA", date:"Sep 3",  fans:22, color:T.coral  },
   { artist:"Sabrina Carpenter",venue:"Hollywood Bowl, LA",   date:"Sep 14", fans:11, color:T.teal   },
 ];
- 
+
 const ShowsScreen = () => (
   <div style={{ flex:1, overflowY:"auto", paddingBottom:80 }}>
     <div style={{ padding:"4px 20px 12px", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
@@ -592,7 +592,7 @@ const ShowsScreen = () => (
     </div>
   </div>
 );
- 
+
 // ── MESSAGES ──────────────────────────────────────────────────────────────
 const convos = [
   { init:"M", color:T.pink,   name:"Maya R.",    last:"ok i'm obsessed with that track you sent",      time:"2m",  unread:2 },
@@ -601,7 +601,7 @@ const convos = [
   { init:"L", color:T.teal,   name:"Leo P.",     last:"have you heard the new Phoebe album???",        time:"3h",  unread:0 },
   { init:"A", color:T.green,  name:"Aria W.",    last:"coming to the 1975 show in aug?",               time:"1d",  unread:0 },
 ];
- 
+
 const chatMessages = [
   { from:"them", text:"hey!! saw you're going to The 1975 show 👀", time:"9:38" },
   { from:"me",   text:"yes!! i've been listening on repeat for weeks", time:"9:39" },
@@ -609,7 +609,7 @@ const chatMessages = [
   { from:"me",   text:"right?? 92% match makes sense lol", time:"9:40" },
   { from:"them", text:"ok i'm obsessed with that track you sent", time:"9:41" },
 ];
- 
+
 const MessagesScreen = () => {
   const [openChat, setOpenChat] = useState(null);
   if (openChat !== null) {
@@ -710,7 +710,7 @@ const MessagesScreen = () => {
     </div>
   );
 };
- 
+
 // ── PROFILE ────────────────────────────────────────────────────────────────
 const topArtists = ["The 1975","Phoebe B.","Olivia R.","Oasis","Sabrina C.","Harry S.","One Direction","Sombr","Addison Rae"];
 const albumColors = [T.pink, T.purple, T.coral, T.teal];
@@ -720,7 +720,7 @@ const coldOpens = [
   { q:"album on repeat?",         a:"Being Funny in a Foreign Language" },
   { q:"song for a road trip?",    a:"Give Me All Your Love" },
 ];
- 
+
 const ProfileScreen = ({ spotifyProfile, spotifyTopArtists, spotifyTopAlbums }) => {
   const displayName = spotifyProfile?.display_name || "Grace Turner";
   const handle = spotifyProfile?.id ? `@${spotifyProfile.id}` : "@grxceturner";
@@ -729,7 +729,7 @@ const ProfileScreen = ({ spotifyProfile, spotifyTopArtists, spotifyTopAlbums }) 
   const artistNames = spotifyTopArtists?.length
     ? spotifyTopArtists.map(a => a.name)
     : topArtists;
- 
+
   return (
   <div style={{ flex:1, overflowY:"auto", paddingBottom:80 }}>
     <div style={{ height:120,
@@ -767,13 +767,13 @@ const ProfileScreen = ({ spotifyProfile, spotifyTopArtists, spotifyTopAlbums }) 
       </div>
       <div style={{ height:1, background:T.border, margin:"0 0 16px" }} />
       <div style={{ fontSize:13, fontWeight:800, color:T.dark, marginBottom:10 }}>top artists</div>
-      <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:18 }}>
+      <div style={{ display:"flex", gap:8, flexWrap:"wrap", justifyContent:"center", marginBottom:18 }}>
         {artistNames.map((a,i) => (
           <Pill key={i} color={[T.pink,T.purple,T.coral,T.teal,T.green,T.purple,T.pink,T.coral,T.teal][i]} soft small>{a}</Pill>
         ))}
       </div>
       <div style={{ fontSize:13, fontWeight:800, color:T.dark, marginBottom:10 }}>top albums</div>
-      <div style={{ display:"flex", gap:10, marginBottom:18 }}>
+      <div style={{ display:"flex", gap:10, justifyContent:"center", marginBottom:18 }}>
         {spotifyTopAlbums?.length
           ? spotifyTopAlbums.map((album) => (
               <div key={album.id} title={album.name} style={{ width:66, height:66, borderRadius:12,
@@ -801,7 +801,7 @@ const ProfileScreen = ({ spotifyProfile, spotifyTopArtists, spotifyTopAlbums }) 
   </div>
   );
 };
- 
+
 // ── Spotify: connecting overlay ─────────────────────────────────────────────
 const SpotifyConnectingScreen = () => (
   <div style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center",
@@ -820,22 +820,22 @@ const SpotifyConnectingScreen = () => (
     </div>
   </div>
 );
- 
+
 // ── APP SHELL ──────────────────────────────────────────────────────────────
 export default function App() {
   // Onboarding state: null = not started, 0-4 = step, "done" = complete
   const [onboardStep, setOnboardStep] = useState(0);
   const [mainScreen, setMainScreen] = useState("home");
- 
+
   // Spotify login state
   const [spotifyStatus, setSpotifyStatus] = useState("idle"); // idle | connecting | connected | error
   const [spotifyError, setSpotifyError] = useState(null);
   const [spotifyProfile, setSpotifyProfile] = useState(null);
   const [spotifyTopArtists, setSpotifyTopArtists] = useState([]);
   const [spotifyTopAlbums, setSpotifyTopAlbums] = useState([]);
- 
+
   const onboardingComplete = onboardStep === "done";
- 
+
   const loadSpotifyData = async (accessToken) => {
     try {
       const [profile, artists, albums] = await Promise.all([
@@ -854,7 +854,7 @@ export default function App() {
       setSpotifyStatus("error");
     }
   };
- 
+
   // Handles the redirect back from Spotify (?code=...) and picks up an
   // already-valid session on refresh.
   useEffect(() => {
@@ -866,7 +866,7 @@ export default function App() {
         setSpotifyStatus("error");
         return;
       }
- 
+
       const code = getSpotifyAuthCode();
       if (code) {
         setSpotifyStatus("connecting");
@@ -881,22 +881,22 @@ export default function App() {
         }
         return;
       }
- 
+
       const existingToken = getStoredSpotifyToken();
       if (existingToken) {
         setSpotifyStatus("connecting");
         await loadSpotifyData(existingToken.access_token);
       }
     };
- 
+
     handleSpotifyRedirect();
   }, []);
- 
+
   const handleSpotifyLogin = () => {
     setSpotifyError(null);
     redirectToSpotifyLogin();
   };
- 
+
   const mainScreens = {
     home:     <HomeScreen />,
     find:     <FindFansScreen />,
@@ -904,10 +904,10 @@ export default function App() {
     messages: <MessagesScreen />,
     profile:  <ProfileScreen spotifyProfile={spotifyProfile} spotifyTopArtists={spotifyTopArtists} spotifyTopAlbums={spotifyTopAlbums} />,
   };
- 
+
   const renderOnboarding = () => {
     if (spotifyStatus === "connecting") return <SpotifyConnectingScreen />;
- 
+
     switch (onboardStep) {
       case 0: return <WelcomeScreen
         onNext={() => setOnboardStep(1)}
@@ -929,7 +929,7 @@ export default function App() {
       default: return null;
     }
   };
- 
+
   return (
     <>
       <style>{`
